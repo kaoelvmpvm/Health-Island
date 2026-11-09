@@ -69,6 +69,7 @@ function makeStation(group,lesson,pickables,animated){
  const root=new THREE.Group();
  const origin=TOPIC_ISLANDS[lesson.topic];
  root.position.set(spot.x-origin.x,groundY,spot.z-origin.z);
+ root.name='教材塔-'+lesson.id;
  group.add(root);
  const accent=material(topic.hex);
  mesh(root,new THREE.CylinderGeometry(.81,.85,.16,10),material(0xf5e9d3),0,.05,0);
