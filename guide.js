@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {MAX_STAGE,PASSCODE_GATES,verifyActivityCode} from './quest-rules.js?v=0.6.0';
 
 // Health Island quest prototype: all progress is local to this browser.
 // No user accounts, external gradebooks, or remote verification are implied.
@@ -53,35 +54,52 @@ function model(island){
  return {root,handRight,ring,hit};
 }
 function storedStage(){
- try {
-   const value=JSON.parse(localStorage.getItem(KEY)||'null');
-   return Number.isInteger(value?.stage)?Math.min(2,Math.max(0,value.stage)):0;
- }catch{return 0;}
+ try{
+   const saved=JSON.parse(localStorage.getItem(KEY)||'null');
+   return Number.isInteger(saved?.stage)?Math.min(MAX_STAGE,Math.max(0,saved.stage)):0;
+ }catch{return 0}
 }
-function save(stage){
- try{localStorage.setItem(KEY,JSON.stringify({version:1,stage,updatedAt:new Date().toISOString()}))}
- catch(e){console.warn('Progress storage unavailable',e)}
+function persist(stage){
+ try{localStorage.setItem(KEY,JSON.stringify({version:2,stage,updatedAt:new Date().toISOString()}))}
+ catch(err){console.warn('Cannot save quest progress locally',err)}
 }
-const readText=[
-  {title:'學習不是比誰更厲害',body:'當同學比較感情或親密經驗時，成熟不是「我比你更有經驗」，而是能認識自己的感受、尊重每個人的界線，不因同學的話勉強做決定。'},
-  {title:'三座塔，三種能力',body:'認知塔幫你辨識資訊與想法；情意塔讓你表達重視的價值；技能塔讓你在真實情境中練習選擇與回應。每一座塔都會有不同的挑戰。'},
-  {title:'健康島的探索規則',body:'先完成行前閱讀與小檢核，喚醒不炫耀島。接著進入 1-2 青春補給，完成遊戲取得青春密碼。回到導覽員這裡輸入密碼，才會解鎖 2-2 情意塔。'}
+const READING=[
+ {title:'學習不必比較高低',body:'親密關係的成熟，不是用經驗多少來競爭。面對同儕的比較與起鬨，我們可以獨立思考，也應尊重自己與他人的界線。'},
+ {title:'從認知、情意到技能',body:'先透過「青春補給」學會辨識觀念，再透過「青春心語 Yes」創作倡議徽章，最後在「青春練功」的情境裡練習做決定與表達立場。'},
+ {title:'讓島嶼與塔樓甦醒',body:'完成行前檢核，第一座不炫耀島就會升起。完成每座塔的原始教材、找到通關密碼，再返回導覽員輸入，才能逐步解鎖下一座塔與新的主題島。'}
 ];
+const STAGE_HINTS=[
+ '歡迎來到健康島！請先閱讀序章並完成兩題檢核，喚醒不炫耀島。',
+ '不炫耀島已經升起。先挑戰 1-2「青春補給」，完成遊戲取得青春密碼，再回來輸入。',
+ '你已解鎖 2-2「青春心語 Yes」。完成徽章提示語的製作流程，取得通關密碼後，就能喚醒技能塔。',
+ '你已解鎖 3-2「青春練功」。請嘗試不同的故事路徑，只有成功通關才會顯示最後的青春密碼。',
+ '恭喜完成不炫耀島的認知、情意與技能三項挑戰！第二座「不染色島」已升起，1-1 認知塔也已開放。'
+];
+const STAGE_TITLES=['行前閱讀','1-2 認知塔','2-2 情意塔','3-2 技能塔','不染色島'];
 function dom(tag,attrs={},text){
  const n=document.createElement(tag);
- Object.entries(attrs).forEach(([k,v])=>{
-   if(k==='className')n.className=v;
-   else if(k==='hidden')n.hidden=!!v;
-   else if(k==='dataset')Object.assign(n.dataset,v);
-   else n.setAttribute(k,String(v));
+ Object.entries(attrs).forEach(([key,value])=>{
+   if(key==='className')n.className=value;
+   else if(key==='hidden')n.hidden=Boolean(value);
+   else if(key==='dataset')Object.assign(n.dataset,value);
+   else n.setAttribute(key,String(value));
  });
  if(text!==undefined)n.textContent=text;
  return n;
 }
+function action(label,id,variant='primary'){
+ return '<button type="button" class="guide-btn '+variant+'" data-action="'+id+'">'+label+'</button>';
+}
+function questRow(label,unlockAt,finishAt,stage){
+ const status=stage>=finishAt?'done':stage>=unlockAt?'current':'locked';
+ const symbol=status==='done'?'✓':status==='current'?'➜':'🔒';
+ const suffix=status==='done'?'已完成':status==='current'?'進行中':'未開放';
+ return '<div class="guide-quest-row '+status+'">'+symbol+' '+label+' <span class="guide-row-state">'+suffix+'</span></div>';
+}
 export function createGuide({island,camera,renderer}){
  const sceneModel=model(island),app=document.getElementById('app');
- let stage=storedStage(),view='home',listeners=[],navigation=null;
- let bannerTimer=null,openBefore=null,down=null;
+ let stage=storedStage(),view='home',listeners=[],navigation=null,down=null,priorFocus=null;
+ let bannerTimeout=null;
  const shortcut=dom('button',{className:'quest-shortcut',type:'button','aria-label':'開啟導覽員的闖關任務'});
  shortcut.id='questShortcut';app.appendChild(shortcut);
  const marker=dom('button',{className:'guide-world-marker',type:'button','aria-label':'與健康島導覽員對話'});
@@ -93,160 +111,157 @@ export function createGuide({island,camera,renderer}){
  overlay.appendChild(dialog);app.appendChild(overlay);
  const banner=dom('div',{className:'quest-banner',hidden:true,role:'status','aria-live':'polite'});
  app.appendChild(banner);
- const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2(),canvas=renderer.domElement;
- const projected=new THREE.Vector3();
+ const canvas=renderer.domElement;
+ const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2(),projected=new THREE.Vector3();
+
  function getStage(){return stage}
- function notify(prev){
-   save(stage);updateShortcut();
-   for(const fn of listeners)fn(stage,prev);
- }
- function setStage(next){
-   next=Math.min(2,Math.max(0,next));
-   if(next===stage)return;
-   const prev=stage;stage=next;
-   notify(prev);
-   if(stage===1)announce('不炫耀島正在升起！第一座認知塔已開放');
-   if(stage===2)announce('密碼正確！2-2 情意塔已解鎖');
- }
- function onChange(fn){
-   listeners.push(fn);
-   fn(stage,stage);
-   return ()=>{listeners=listeners.filter(x=>x!==fn)};
+ function onChange(callback){
+   listeners.push(callback);callback(stage,stage);
+   return ()=>{listeners=listeners.filter(fn=>fn!==callback)};
  }
  function setNavigator(nav){navigation=nav}
- function updateShortcut(){
-   const text=stage===0?'閱讀任務':stage===1?'認知塔 1-2':'情意塔 2-2';
-   shortcut.textContent='🧭 '+text+' · '+stage+'/2';
+ function shortcutText(){
+   shortcut.textContent='🧭 '+STAGE_TITLES[stage]+' · '+stage+'/'+MAX_STAGE;
  }
- function announce(text){
-   clearTimeout(bannerTimer);
-   banner.textContent='✦ '+text;banner.hidden=false;
-   bannerTimer=setTimeout(()=>banner.hidden=true,4700);
+ function announce(message){
+   clearTimeout(bannerTimeout);
+   banner.textContent='✦ '+message;banner.hidden=false;
+   bannerTimeout=setTimeout(()=>{banner.hidden=true},4700);
  }
- function goHome(){view='home';render()}
+ function setStage(next){
+   const bounded=Math.max(0,Math.min(MAX_STAGE,next));
+   if(stage===bounded)return;
+   const previous=stage;stage=bounded;
+   persist(stage);shortcutText();
+   for(const callback of listeners)callback(stage,previous);
+   if(stage===1)announce('不炫耀島升起！1-2 認知塔已開放');
+   if(stage===2)announce('密碼正確！2-2 情意塔升起');
+   if(stage===3)announce('密碼正確！3-2 技能塔升起');
+   if(stage===4)announce('三座塔皆完成！不染色島與 1-1 認知塔升起');
+ }
  function open(page='home'){
-   openBefore=document.activeElement;
+   if(overlay.hidden)priorFocus=document.activeElement;
    view=page;overlay.hidden=false;render();
    dialog.querySelector('button,[tabindex],input')?.focus();
  }
  function close(){
+   if(overlay.hidden)return;
    overlay.hidden=true;
-   const restore=openBefore;openBefore=null;
-   if(restore && restore.isConnected && typeof restore.focus==='function')restore.focus();
+   const old=priorFocus;priorFocus=null;
+   if(old?.isConnected && typeof old.focus==='function')old.focus();
    else shortcut.focus();
  }
- function actionButton(label,id,kind='primary'){
-   return '<button type="button" class="guide-btn '+kind+'" data-action="'+id+'">'+label+'</button>';
+ function nextAfterSuccess(previousStage){
+   // Close the dialog before moving the camera so users can observe the 3D rise.
+   close();
+   if(previousStage===0||previousStage===3)navigation?.goOverview?.();
+   else navigation?.goTo?.('不炫耀');
+ }
+ function applyCode(){
+   const config=PASSCODE_GATES[stage];
+   if(!config)return;
+   const field=dialog.querySelector('#questCode');
+   const feedback=dialog.querySelector('#codeFeedback');
+   const code=field?.value??'';
+   if(!verifyActivityCode(stage,code)){
+     feedback.textContent='密碼不正確。請先完成 '+config.lessonId+' 原始教材，從通關畫面取得正確密碼。';
+     field?.focus();
+     return;
+   }
+   const previous=stage;
+   setStage(config.nextStage);
+   nextAfterSuccess(previous);
+ }
+ function homeHTML(){
+   const rows=[
+     questRow('中央主島 · 行前閱讀與檢核',0,1,stage),
+     questRow('不炫耀島 · 1-2 認知塔',1,2,stage),
+     questRow('不炫耀島 · 2-2 情意塔',2,3,stage),
+     questRow('不炫耀島 · 3-2 技能塔',3,4,stage),
+     questRow('不染色島 · 1-1 認知塔',4,5,stage)
+   ].join('');
+   let buttons='';
+   if(stage===0)buttons=action('閱讀行前教材','reading');
+   if(stage===1)buttons=action('前往 1-2 認知塔','lesson12')+action('輸入 1-2 青春密碼','password','secondary');
+   if(stage===2)buttons=action('前往 2-2 情意塔','lesson22')+action('輸入 2-2 通關密碼','password','secondary');
+   if(stage===3)buttons=action('前往 3-2 技能塔','lesson32')+action('輸入 3-2 成功密碼','password','secondary');
+   if(stage===4)buttons=action('探索不染色島','visitClear')+action('前往 1-1 認知塔','lesson11','secondary');
+   return '<div class="guide-step">目前任務 / '+STAGE_TITLES[stage]+'</div>'+
+     '<p class="guide-p">'+STAGE_HINTS[stage]+'</p>'+
+     '<div class="guide-quest-map">'+rows+'</div>'+
+     '<div class="guide-actions">'+buttons+action('關閉導覽','close','quiet')+
+     '<button class="guide-reset" type="button" data-action="reset">↻ 重設本機闖關進度（測試用）</button></div>';
  }
  function render(){
    dialog.replaceChildren();
    const exit=dom('button',{className:'guide-close',type:'button','aria-label':'關閉導覽員視窗'},'×');
    exit.addEventListener('click',close);
    dialog.appendChild(exit);
-   const top=dom('div',{className:'guide-header'});
-   top.innerHTML='<span class="guide-portrait">🧭</span><div><small>HEALTH ISLAND · YOUR GUIDE</small><h2 id="guideTitle">健康島導覽員</h2><p>跟著我，一步一步讓世界甦醒！</p></div>';
-   dialog.appendChild(top);
-   const content=dom('div',{className:'guide-body'});
-   dialog.appendChild(content);
+   const header=dom('div',{className:'guide-header'});
+   header.innerHTML='<span class="guide-portrait">🧭</span><div><small>HEALTH ISLAND · YOUR GUIDE</small><h2 id="guideTitle">健康島導覽員</h2><p>完成任務，一步一步讓世界甦醒！</p></div>';
+   dialog.appendChild(header);
+   const content=dom('div',{className:'guide-body'});dialog.appendChild(content);
    if(view==='reading'){
-     content.innerHTML='<div class="guide-step">序章 / 行前閱讀（示範教材）</div>'+
-       '<p class="guide-p">以下是用來測試闖關流程的暫定閱讀內容，不是正式教材區的課程。</p>'+
-       readText.map((a,i)=>'<article class="guide-reading-item"><span>0'+(i+1)+'</span><div><h3>'+a.title+'</h3><p>'+a.body+'</p></div></article>').join('')+
-       '<div class="guide-actions">'+actionButton('我已閱讀，開始檢核','quiz')+actionButton('返回導覽','home','quiet')+'</div>';
+     content.innerHTML='<div class="guide-step">序章 / 行前閱讀（流程示範）</div>'+
+       '<p class="guide-p">這是測試闖關流程的暫定教材，正式教材區尚未連結。</p>'+
+       READING.map((item,i)=>'<article class="guide-reading-item"><span>0'+(i+1)+'</span><div><h3>'+item.title+'</h3><p>'+item.body+'</p></div></article>').join('')+
+       '<div class="guide-actions">'+action('我已閱讀，開始檢核','quiz')+action('返回導覽','home','quiet')+'</div>';
    }else if(view==='quiz'){
      content.innerHTML='<div class="guide-step">行前檢核 / 2 題</div>'+
-       '<p class="guide-p">閱讀後請回答兩個問題，答對才能喚醒不炫耀島。</p>'+
+       '<p class="guide-p">請回答兩個問題，全部答對後喚醒第一座主題島。</p>'+
        '<form id="guideQuiz" class="guide-quiz">'+
-       '<fieldset><legend>1. 當同學用親密經驗互相比較，最合適的態度是？</legend>'+
-       '<label><input type="radio" name="q1" value="0"> 跟著比較，避免被別人看不起</label>'+
-       '<label><input type="radio" name="q1" value="1"> 尊重界線，不用經驗多少判斷成熟</label>'+
-       '<label><input type="radio" name="q1" value="2"> 嘲笑不願參與比較的人</label></fieldset>'+
-       '<fieldset><legend>2. 完成 1-2 認知塔的遊戲後，應該怎麼解鎖下一座塔？</legend>'+
-       '<label><input type="radio" name="q2" value="0"> 重新整理網頁，等它自己出現</label>'+
-       '<label><input type="radio" name="q2" value="1"> 直接跳到不迷路島</label>'+
-       '<label><input type="radio" name="q2" value="2"> 找到青春密碼，回導覽員輸入</label></fieldset>'+
+       '<fieldset><legend>1. 當同學比較親密經驗時，最適當的態度是？</legend>'+
+       '<label><input type="radio" name="q1" value="0"> 跟著比較，避免被看不起</label>'+
+       '<label><input type="radio" name="q1" value="1"> 尊重界線，不必用經驗多少評斷成熟</label>'+
+       '<label><input type="radio" name="q1" value="2"> 嘲笑不願意參與比較的人</label></fieldset>'+
+       '<fieldset><legend>2. 完成塔樓的互動教材後，應如何解鎖下一關？</legend>'+
+       '<label><input type="radio" name="q2" value="0"> 重新整理，等待塔樓出現</label>'+
+       '<label><input type="radio" name="q2" value="1"> 跳過前面的塔樓直接前往下一島</label>'+
+       '<label><input type="radio" name="q2" value="2"> 找到通關密碼，回到導覽員驗證</label></fieldset>'+
        '<div id="quizFeedback" class="guide-feedback" role="status" aria-live="polite"></div>'+
        '<div class="guide-actions"><button type="submit" class="guide-btn primary">檢查答案，喚醒島嶼</button>'+
-       actionButton('返回閱讀','reading','quiet')+'</div></form>';
-     content.querySelector('#guideQuiz').addEventListener('submit',e=>{
-       e.preventDefault();
-       const form=new FormData(e.currentTarget),feedback=content.querySelector('#quizFeedback');
-       if(!form.has('q1')||!form.has('q2')){
-         feedback.textContent='請先完成兩題，再進行檢核。';return;
+       action('返回閱讀','reading','quiet')+'</div></form>';
+     content.querySelector('#guideQuiz').addEventListener('submit',event=>{
+       event.preventDefault();
+       const answers=new FormData(event.currentTarget);
+       const feedback=content.querySelector('#quizFeedback');
+       if(!answers.has('q1')||!answers.has('q2')){
+         feedback.textContent='請先完成兩題，再送出檢核。';return;
        }
-       if(form.get('q1')!=='1'||form.get('q2')!=='2'){
-         feedback.textContent='尚有答案需要調整。可以返回閱讀，再思考「尊重界線」和「密碼解鎖」的意義。';
-         return;
+       if(answers.get('q1')!=='1'||answers.get('q2')!=='2'){
+         feedback.textContent='還有答案需要調整。可以重新閱讀，思考尊重界線和密碼解鎖的意義。';return;
        }
-       // Reveal the world before showing another dialogue so the rise can be seen.
-       setStage(1);close();
-       navigation?.goOverview?.();
-       // Players can inspect the rising island without an unexpected modal.
+       const previous=stage;
+       setStage(1);
+       nextAfterSuccess(previous);
      });
-   }else if(view==='raised'){
-     content.innerHTML='<div class="guide-success-icon">✦</div>'+
-       '<h3 class="guide-feature-title">不炫耀島，升起！</h3>'+
-       '<p class="guide-p">閱讀檢核已完成。前往不炫耀島，你會看到第一座「1-2 認知塔」。完成那裡的原始互動遊戲，取得青春密碼後，再回來找我。</p>'+
-       '<div class="guide-actions">'+actionButton('前往不炫耀島','visit')+
-       actionButton('開始 1-2 認知練習','lesson12','secondary')+'</div>';
-   }else if(view==='password'){
-     content.innerHTML='<div class="guide-step">解鎖下一座塔 / 1-2 → 2-2</div>'+
-       '<p class="guide-p">請輸入完成「1-2 青春補給－不炫耀」後取得的四位數青春密碼。</p>'+
+   }else if(view==='password' && PASSCODE_GATES[stage]){
+     const gate=PASSCODE_GATES[stage];
+     content.innerHTML='<div class="guide-step">闖關密碼驗證 / '+gate.title+'</div>'+
+       '<p class="guide-p">請先完成 '+gate.lessonId+' 原始教材，找到通關畫面上的'+gate.codeLabel+'。驗證成功後將解鎖'+gate.nextDescription+'。</p>'+
        '<form id="passwordForm" class="guide-code-form">'+
-       '<label for="questCode">青春密碼</label><input id="questCode" name="code" type="text" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="輸入四位數密碼" required>'+
+       '<label for="questCode">'+gate.codeLabel+'</label>'+
+       '<input id="questCode" type="text" name="code" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="請輸入'+gate.code.length+'位數密碼" required>'+
        '<div id="codeFeedback" class="guide-feedback" role="status" aria-live="polite"></div>'+
-       '<div class="guide-actions"><button class="guide-btn primary" type="submit">驗證並解鎖 2-2</button>'+
-       actionButton('返回任務','home','quiet')+'</div></form>';
-     content.querySelector('#passwordForm').addEventListener('submit',e=>{
-       e.preventDefault();
-       const code=content.querySelector('#questCode').value.trim().replace(/[^\d]/g,'');
-       if(code!=='2499'){
-         content.querySelector('#codeFeedback').textContent='密碼不正確。請先完成 1-2 遊戲，在通關畫面找尋青春密碼。';
-         return;
-       }
-       // The new tower has a rising animation; don't cover it with the dialog.
-       setStage(2);close();
-       navigation?.goTo?.('不炫耀');
-       // Keep the newly raised second tower unobstructed.
-     });
-   }else if(view==='unlocked'){
-     content.innerHTML='<div class="guide-success-icon">✧</div>'+
-       '<h3 class="guide-feature-title">第二座塔已出現！</h3>'+
-       '<p class="guide-p">2-2 青春心語的情意塔已經升起。你可以進入這座塔體驗徽章提示語產生器。第三座技能塔與下一座主題島，會在後續版本接上。</p>'+
-       '<div class="guide-actions">'+actionButton('前往 2-2 情意塔','lesson22')+
-       actionButton('返回島嶼','close','quiet')+'</div>';
+       '<div class="guide-actions"><button class="guide-btn primary" type="submit">驗證並解鎖下一關</button>'+
+       action('返回任務','home','quiet')+'</div></form>';
+     content.querySelector('#passwordForm').addEventListener('submit',event=>{event.preventDefault();applyCode()});
    }else{
-     const next=stage===0?'請先閱讀行前教材並完成兩題檢核。':'';
-     content.innerHTML='<div class="guide-step">目前任務 · '+(stage===0?'行前準備':stage===1?'第一座塔':'第二座塔')+'</div>'+
-       '<p class="guide-p">'+(stage===0?
-       '歡迎來到健康島！現在只有中央主島。閱讀序章並完成檢核後，不炫耀島才會從海面升起。':
-       stage===1?
-       '不炫耀島已開放。先進入 1-2 認知塔，完成原本的互動遊戲，取得青春密碼。回來輸入正確密碼，情意塔就會出現。':
-       '你已經成功解鎖 2-2 情意塔！可進入原本的徽章提示語教材。下一階段的技能塔與後續島嶼仍在規劃中。')+'</p>'+
-       '<div class="guide-quest-map">'+
-       '<div class="guide-quest-row done">◉ 中央主島 · 導覽員</div>'+
-       '<div class="guide-quest-row '+(stage>=1?'done':'locked')+'">'+(stage>=1?'✓':'🔒')+' 不炫耀島 · 1-2 認知塔</div>'+
-       '<div class="guide-quest-row '+(stage>=2?'done':'locked')+'">'+(stage>=2?'✓':'🔒')+' 不炫耀島 · 2-2 情意塔</div>'+
-       '<div class="guide-quest-row locked">🔒 3-2 技能塔與下一座島（未開放）</div>'+
-       '</div>'+
-       '<div class="guide-actions">'+
-       (stage===0?actionButton('閱讀行前教材','reading'):
-       stage===1?actionButton('前往 1-2 認知塔','lesson12')+actionButton('輸入通關密碼','password','secondary'):
-       actionButton('前往 2-2 情意塔','lesson22'))+
-       actionButton('關閉導覽','close','quiet')+
-       '<button class="guide-reset" type="button" data-action="reset">↻ 重設本機闖關進度（測試用）</button></div>';
+     content.innerHTML=homeHTML();
    }
-   dialog.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',e=>{
-     const action=e.currentTarget.dataset.action;
-     if(action==='home')goHome();
-     else if(action==='reading'||action==='quiz'||action==='password'){view=action;render()}
-     else if(action==='close')close();
-     else if(action==='visit'){close();navigation?.goTo?.('不炫耀')}
-     else if(action==='lesson12'){close();navigation?.openLesson?.('1-2')}
-     else if(action==='lesson22'){close();navigation?.openLesson?.('2-2')}
-     else if(action==='reset'){
-       if(!window.confirm('確定要清除這個瀏覽器的闖關進度，讓不炫耀島重新沉入海面嗎？'))return;
-       setStage(0);navigation?.goOverview?.();goHome();
+   dialog.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',event=>{
+     const a=event.currentTarget.dataset.action;
+     if(a==='home'){view='home';render()}
+     else if(a==='reading'||a==='quiz'||a==='password'){view=a;render()}
+     else if(a==='close')close();
+     else if(a==='reset'){
+       if(!window.confirm('確定重設這個瀏覽器的健康島闖關紀錄，讓所有主題島重新沉入海面嗎？'))return;
+       setStage(0);navigation?.goOverview?.();view='home';render();
+     }else{
+       const targets={lesson12:'1-2',lesson22:'2-2',lesson32:'3-2',lesson11:'1-1'};
+       close();
+       if(a==='visitClear')navigation?.goTo?.('不染色');
+       else if(targets[a])navigation?.openLesson?.(targets[a]);
      }
    }));
  }
@@ -260,26 +275,31 @@ export function createGuide({island,camera,renderer}){
    if(projected.z< -1||projected.z>1||x<30||x>canvas.clientWidth-30||y<60||y>canvas.clientHeight-70){
      marker.classList.add('hidden');
    }else{
-     marker.classList.remove('hidden');marker.style.left=x+'px';marker.style.top=y+'px';
+     marker.classList.remove('hidden');
+     marker.style.left=x+'px';marker.style.top=y+'px';
    }
  }
  shortcut.addEventListener('click',()=>open());
  marker.addEventListener('click',()=>open());
- overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden){e.preventDefault();e.stopImmediatePropagation();close()}},true);
- canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY}});
- canvas.addEventListener('pointerup',e=>{
+ overlay.addEventListener('click',event=>{if(event.target===overlay)close()});
+ document.addEventListener('keydown',event=>{
+   if(event.key==='Escape'&&!overlay.hidden){
+     event.preventDefault();event.stopImmediatePropagation();close();
+   }
+ },true);
+ canvas.addEventListener('pointerdown',event=>{down={x:event.clientX,y:event.clientY}});
+ canvas.addEventListener('pointerup',event=>{
    if(!down)return;
-   const dist=Math.hypot(e.clientX-down.x,e.clientY-down.y);down=null;
-   if(dist>9||!overlay.hidden)return;
-   const box=canvas.getBoundingClientRect();
-   mouse.x=((e.clientX-box.left)/box.width)*2-1;
-   mouse.y=-((e.clientY-box.top)/box.height)*2+1;
+   const distance=Math.hypot(event.clientX-down.x,event.clientY-down.y);down=null;
+   if(distance>9||!overlay.hidden)return;
+   const rect=canvas.getBoundingClientRect();
+   mouse.x=((event.clientX-rect.left)/rect.width)*2-1;
+   mouse.y=-((event.clientY-rect.top)/rect.height)*2-1;
    raycaster.setFromCamera(mouse,camera);
    if(raycaster.intersectObject(sceneModel.hit,false).length)open();
  });
- updateShortcut();
- try {
+ shortcutText();
+ try{
    if(stage===0&&!sessionStorage.getItem('healthIslandGuideWelcomeV1')){
      sessionStorage.setItem('healthIslandGuideWelcomeV1','1');
      setTimeout(()=>{if(overlay.hidden)open()},900);
