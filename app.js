@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=0.5.0';
-import { createGuide, GUIDE_POSITION } from './guide.js?v=0.5.0';
+import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=0.5.1';
+import { createGuide, GUIDE_POSITION } from './guide.js?v=0.5.1';
 import { createTreasureVault, VAULT_LOCATION } from './vault.js?v=0.4.0';
 
 // Health Island v0.3 — central nature island and three external youth islands.
