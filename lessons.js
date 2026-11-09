@@ -1,9 +1,15 @@
 import * as THREE from 'three';
+import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js';
 
+// Each station lives on its own floating island; coordinates are world-space.
+const world=(topic,n)=>({
+ x: TOPIC_ISLANDS[topic].x+LOCAL_STATIONS[n].x,
+ z: TOPIC_ISLANDS[topic].z+LOCAL_STATIONS[n].z
+});
 export const LEARNING_LOCATIONS=Object.freeze({
-  '1-1':{x:-6.05,z:-1.72},'2-1':{x:-4.56,z:-4.85},'3-1':{x:-2.35,z:-5.78},
-  '1-2':{x:2.55,z:-.48},'2-2':{x:5.55,z:-.75},'3-2':{x:6.37,z:-3.65},
-  '1-3':{x:-6.46,z:3.62},'2-3':{x:-3.17,z:6.04},'3-3':{x:.17,z:6.60}
+ '1-1':world('不染色',0),'2-1':world('不染色',1),'3-1':world('不染色',2),
+ '1-2':world('不炫耀',0),'2-2':world('不炫耀',1),'3-2':world('不炫耀',2),
+ '1-3':world('不迷路',0),'2-3':world('不迷路',1),'3-3':world('不迷路',2)
 });
 const TOPICS={
  '不染色':{hex:0x32a680,color:'#32a680',soft:'#e0f7ed',icon:'🌿'},
@@ -58,7 +64,10 @@ function districtSign(group,text,x,z){
 }
 function makeStation(group,lesson,pickables,animated){
  const spot=LEARNING_LOCATIONS[lesson.id],topic=TOPICS[lesson.topic];
- const root=new THREE.Group();root.position.set(spot.x,groundY,spot.z);group.add(root);
+ const root=new THREE.Group();
+ const origin=TOPIC_ISLANDS[lesson.topic];
+ root.position.set(spot.x-origin.x,groundY,spot.z-origin.z);
+ group.add(root);
  const accent=material(topic.hex);
  mesh(root,new THREE.CylinderGeometry(.81,.85,.16,10),material(0xf5e9d3),0,.05,0);
  mesh(root,new THREE.CylinderGeometry(.68,.72,.14,10),material(topic.hex),0,.18,0);
@@ -96,37 +105,52 @@ function makeStation(group,lesson,pickables,animated){
  hitbox.userData.lessonId=lesson.id;pickables.push(hitbox);
  animated.push({beacon,halo,spot,lesson});
 }
-function connectStations(group,a,b,hex){
+function connectStations(group,topic,a,b,hex){
+ const origin=TOPIC_ISLANDS[topic];
  const p=LEARNING_LOCATIONS[a],q=LEARNING_LOCATIONS[b];
  const dist=Math.hypot(q.x-p.x,q.z-p.z);
  const steps=Math.ceil(dist/.42);
  const color=material(0xdfd6bd),marked=material(hex);
  for(let i=1;i<steps;i++){
    const t=i/steps,x=p.x+(q.x-p.x)*t,z=p.z+(q.z-p.z)*t;
-   const tile=mesh(group,new THREE.CylinderGeometry(.13,.145,.042,6),i%5===0?marked:color,x,.69,z,false);
+   const tile=mesh(group,new THREE.CylinderGeometry(.13,.145,.042,6),i%5===0?marked:color,x-origin.x,.69,z-origin.z,false);
    tile.rotation.y=i*.47;
  }
 }
-export async function setupLearningIsland({island,camera,renderer,controls}){
+export async function setupLearningIsland({scene,camera,renderer,controls}){
  const response=await fetch('./data/lessons.json',{cache:'no-cache'});
  if(!response.ok)throw Error('無法讀取教材清單 HTTP '+response.status);
  const payload=await response.json(),lessons=payload.lessons;
  if(!Array.isArray(lessons)||lessons.length!==9)throw Error('教材清單應有九個據點');
  const byId=Object.fromEntries(lessons.map(l=>[l.id,l]));
  const pickables=[],animated=[];
- const district=new THREE.Group();district.name='青春探索聚落';island.add(district);
- lessons.forEach(l=>makeStation(district,l,pickables,animated));
+ // Leave the original central island as an environmental hub and add
+ // exactly three physical satellite landmasses for the nine youth lessons.
+ const islands=buildSatelliteIslands(scene);
+ lessons.forEach(l=>makeStation(islands[l.topic],l,pickables,animated));
  TOPIC_ORDER.forEach(t=>{
    const ids=lessons.filter(l=>l.topic===t).sort((a,b)=>a.id.localeCompare(b.id)).map(l=>l.id);
-   connectStations(district,ids[0],ids[1],TOPICS[t].hex);
-   connectStations(district,ids[1],ids[2],TOPICS[t].hex);
+   connectStations(islands[t],t,ids[0],ids[1],TOPICS[t].hex);
+   connectStations(islands[t],t,ids[1],ids[2],TOPICS[t].hex);
+   districtSign(islands[t],t+'島',0,-2.72);
  });
- districtSign(district,'不染色',-5.5,-5.8);
- districtSign(district,'不炫耀',4.89,-2.45);
- districtSign(district,'不迷路',-4.68,6.15);
 
  const app=document.getElementById('app');
- const openDirectory=append(app,'button',{id:'openDirectory',className:'lesson-trail',type:'button','aria-label':'開啟青春探索教材地圖'},'▦ 青春探索地圖  9');
+ const openDirectory=append(app,'button',{id:'openDirectory',className:'lesson-trail',type:'button','aria-label':'開啟青春探索教材地圖'},'▦ 四島探索地圖  9');
+ const switcher=append(app,'nav',{className:'island-switcher','aria-label':'健康島分島導覽'});
+ const overviewBtn=append(switcher,'button',{type:'button',className:'island-switch active','aria-pressed':'true'},'◈ 四島總覽');
+ const islandBtns=new Map();
+ for(const topic of TOPIC_ORDER){
+   const btn=append(switcher,'button',{type:'button',className:'island-switch','aria-pressed':'false'},TOPICS[topic].icon+' '+topic+'島');
+   btn.style.setProperty('--switch-accent',TOPICS[topic].color);
+   islandBtns.set(topic,btn);
+ }
+ const islandLabels=new Map();
+ for(const topic of TOPIC_ORDER){
+   const node=append(app,'button',{type:'button',className:'satellite-marker','aria-label':'前往'+topic+'島'},TOPICS[topic].icon+' '+topic+'島');
+   node.style.setProperty('--topic',TOPICS[topic].color);
+   islandLabels.set(topic,node);
+ }
  const scrim=append(app,'div',{id:'learnScrim',className:'learn-scrim',hidden:true});
  const panel=append(app,'aside',{id:'learnPanel',className:'learn-panel',hidden:true,role:'dialog','aria-modal':'true','aria-label':'教材資訊'});
  const panelClose=append(panel,'button',{className:'learn-close',type:'button','aria-label':'關閉教材資訊'},'×');
@@ -136,7 +160,7 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
  const dirClose=append(directory,'button',{className:'learn-close',type:'button','aria-label':'關閉教材地圖'},'×');
  append(directory,'div',{className:'eyebrow'},'THE LEARNING ARCHIPELAGO');
  append(directory,'h2',{id:'directoryTitle'},'青春探索地圖 · 9 個學習據點');
- append(directory,'p',{className:'directory-desc'},'三大主題，每個聚落都有認知、情意、技能三座教學建築。選擇一個據點，即可在島上查看教材。');
+ append(directory,'p',{className:'directory-desc'},'中央健康島外圍共有不染色島、不炫耀島、不迷路島；每座分島各有認知、情意、技能三個教材據點。');
  const grid=append(directory,'div',{className:'directory-grid'});
  const viewer=append(app,'section',{id:'learnViewer',className:'learn-viewer',hidden:true,role:'dialog','aria-modal':'true','aria-label':'教材體驗視窗'});
  const viewerTop=append(viewer,'div',{className:'viewer-top'});
@@ -168,7 +192,7 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
    append(head,'div',{className:'district-icon'},t.icon);
    const title=append(head,'div');
    append(title,'strong',{},topic);
-   append(title,'small',{},'三個學習據點');
+   append(title,'small',{},'三個學習據點 · 獨立浮島');
    lessons.filter(l=>l.topic===topic).sort((a,b)=>a.id.localeCompare(b.id)).forEach(l=>{
      const card=append(col,'button',{className:'learning-card',type:'button'});
      append(card,'span',{className:'card-number'},l.id);
@@ -178,14 +202,43 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
      card.addEventListener('click',()=>{backdrop.hidden=true;select(l.id)});
    });
  }
- let selected=null;
+ let selected=null,mode='overview',flight=null;
+ const isMobile=()=>window.innerWidth<=680;
+ const overviewPosition=()=>new THREE.Vector3(isMobile()?47:40,isMobile()?69:47,isMobile()?103:75);
+ const focusedOffset=()=>new THREE.Vector3(isMobile()?12:9,isMobile()?20:13,isMobile()?22:19);
  function stopSpin(){
    controls.autoRotate=false;
    const b=document.getElementById('spinBtn');
    b.classList.remove('active');b.setAttribute('aria-pressed','false');
  }
+ function moveTo(topic,instant=false){
+   mode=topic;
+   stopSpin();
+   const origin=topic?TOPIC_ISLANDS[topic]:{x:0,z:0};
+   const target=new THREE.Vector3(origin.x,.38,origin.z);
+   const destination=topic?target.clone().add(focusedOffset()):overviewPosition();
+   flight={
+     fromPos:camera.position.clone(),fromTarget:controls.target.clone(),
+     toPos:destination,toTarget:target,t:0,duration:instant?0:.95
+   };
+   if(instant){camera.position.copy(destination);controls.target.copy(target);controls.update();flight=null}
+   overviewBtn.classList.toggle('active',!topic);overviewBtn.setAttribute('aria-pressed',String(!topic));
+   islandBtns.forEach((b,t)=>{
+     b.classList.toggle('active',t===topic);
+     b.setAttribute('aria-pressed',String(t===topic));
+   });
+ }
+ function visit(topic){
+   closePanel();
+   moveTo(topic);
+ }
+ function goOverview(instant=false){
+   closePanel();
+   moveTo(null,instant);
+ }
  function select(id){
    const l=byId[id];if(!l)return;
+   if(mode!==l.topic)moveTo(l.topic);
    selected=l;stopSpin();backdrop.hidden=true;
    const t=TOPICS[l.topic],d=DIMS[l.dimension];
    panelContent.replaceChildren();
@@ -208,15 +261,14 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
    });
    panel.hidden=false;scrim.hidden=false;
    markers.forEach((b,key)=>b.classList.toggle('selected',key===id));
-   const spot=LEARNING_LOCATIONS[id];
-   const to=new THREE.Vector3(spot.x,.94,spot.z);
-   camera.position.add(to.clone().sub(controls.target));
-   controls.target.copy(to);controls.update();
  }
  function closePanel(){panel.hidden=true;scrim.hidden=true;selected=null;markers.forEach(b=>b.classList.remove('selected'))}
  function closeDirectory(){backdrop.hidden=true;openDirectory.focus()}
  function closeViewer(){viewer.hidden=true;iframe.src='about:blank';panelContent.querySelector('.learn-button.primary')?.focus()}
  openDirectory.addEventListener('click',()=>{closePanel();backdrop.hidden=false;dirClose.focus()});
+ overviewBtn.addEventListener('click',()=>goOverview());
+ islandBtns.forEach((b,topic)=>b.addEventListener('click',()=>visit(topic)));
+ islandLabels.forEach((b,topic)=>b.addEventListener('click',()=>visit(topic)));
  panelClose.addEventListener('click',closePanel);scrim.addEventListener('click',closePanel);
  dirClose.addEventListener('click',closeDirectory);
  backdrop.addEventListener('click',e=>{if(e.target===backdrop)closeDirectory()});
@@ -239,17 +291,46 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
    mouse.set((e.clientX-rect.left)/rect.width*2-1, -((e.clientY-rect.top)/rect.height*2-1));
    raycaster.setFromCamera(mouse,camera);
    const hit=raycaster.intersectObjects(pickables,false)[0];
-   if(hit)select(hit.object.userData.lessonId);
+   if(hit){select(hit.object.userData.lessonId);return;}
+   // Clicking on a satellite's terrain focuses that island as well.
+   const landMeshes=TOPIC_ORDER.map(t=>islands[t].children[0]);
+   const landHit=raycaster.intersectObjects(landMeshes,false)[0];
+   if(landHit){
+     const topic=TOPIC_ORDER.find(t=>islands[t].children[0]===landHit.object);
+     if(topic)visit(topic);
+   }
  });
  const v=new THREE.Vector3(),forward=new THREE.Vector3();
  function update(dt,elapsed){
+   if(flight){
+     flight.t=Math.min(1,flight.t+dt/flight.duration);
+     const k=1-Math.pow(1-flight.t,3);
+     camera.position.lerpVectors(flight.fromPos,flight.toPos,k);
+     controls.target.lerpVectors(flight.fromTarget,flight.toTarget,k);
+     controls.update();
+     if(flight.t===1)flight=null;
+   }
    camera.getWorldDirection(forward);
+   for(const [topic,node] of islandLabels){
+     if(mode!=='overview'){node.classList.add('hidden');continue;}
+     const origin=TOPIC_ISLANDS[topic];
+     v.set(origin.x,4.1,origin.z).project(camera);
+     const x=(v.x*.5+.5)*canvas.clientWidth;
+     const y=(-v.y*.5+.5)*canvas.clientHeight;
+     if(x<30||x>canvas.clientWidth-30||y<60||y>canvas.clientHeight-80||v.z>1||v.z< -1){
+       node.classList.add('hidden');
+     }else{
+       node.classList.remove('hidden');
+       node.style.left=x+'px';node.style.top=y+'px';
+     }
+   }
    for(const a of animated){
      a.beacon.position.y=2.38+.09*Math.sin(elapsed*1.8);
      a.halo.position.y=a.beacon.position.y;
      a.halo.rotation.z+=dt*.5;
      a.halo.material.opacity=(selected?.id===a.lesson.id) ? .95 : .52+.17*Math.sin(elapsed*1.5);
      const b=markers.get(a.lesson.id);
+     if(mode!==a.lesson.topic){b.classList.add('hidden');continue;}
      v.set(a.spot.x,3.05,a.spot.z);
      if(v.clone().sub(camera.position).dot(forward)<0){b.classList.add('hidden');continue}
      v.project(camera);
@@ -259,5 +340,5 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
      else{b.classList.remove('hidden');b.style.left=x+'px';b.style.top=y+'px'}
    }
  }
- return {update,lessons,isViewerOpen:()=>!viewer.hidden};
+ return {update,lessons,isViewerOpen:()=>!viewer.hidden,goOverview};
 }
