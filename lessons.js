@@ -248,7 +248,7 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
      a.beacon.position.y=2.38+.09*Math.sin(elapsed*1.8);
      a.halo.position.y=a.beacon.position.y;
      a.halo.rotation.z+=dt*.5;
-     a.halo.material.opacity=selected?.id===a.lesson.id?.95:.52+.17*Math.sin(elapsed*1.5);
+     a.halo.material.opacity=(selected?.id===a.lesson.id) ? .95 : .52+.17*Math.sin(elapsed*1.5);
      const b=markers.get(a.lesson.id);
      v.set(a.spot.x,3.05,a.spot.z);
      if(v.clone().sub(camera.position).dot(forward)<0){b.classList.add('hidden');continue}
@@ -259,5 +259,5 @@ export async function setupLearningIsland({island,camera,renderer,controls}){
      else{b.classList.remove('hidden');b.style.left=x+'px';b.style.top=y+'px'}
    }
  }
- return {update,lessons};
+ return {update,lessons,isViewerOpen:()=>!viewer.hidden};
 }
