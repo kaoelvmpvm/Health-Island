@@ -1,0 +1,500 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Health Island v0.1 — a procedural, content-free environment study.
+// Everything visible in this prototype is generated from Three.js geometry.
+const host = document.querySelector('#scene');
+const app = document.querySelector('#app');
+const loading = document.querySelector('#loading');
+const errorBox = document.querySelector('#error');
+const spinBtn = document.querySelector('#spinBtn');
+const dayBtn = document.querySelector('#dayBtn');
+const dayIcon = document.querySelector('#dayIcon');
+const dayText = document.querySelector('#dayText');
+const resetBtn = document.querySelector('#resetBtn');
+const TAU = Math.PI * 2;
+const isMobile = () => window.innerWidth < 680;
+
+let seed = 837103;
+function random() {
+  seed = (Math.imul(1664525, seed) + 1013904223) | 0;
+  return (seed >>> 0) / 4294967296;
+}
+const between = (a, b) => a + (b - a) * random();
+const choice = array => array[Math.floor(random() * array.length)];
+const color = hex => new THREE.Color(hex);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile() ? 1.55 : 1.8));
+  renderer.setSize(host.clientWidth, host.clientHeight);
+  renderer.setClearColor(0xffffff, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.28;
+  host.appendChild(renderer.domElement);
+} catch (err) {
+  loading.classList.add('done');
+  errorBox.hidden = false;
+  errorBox.textContent = '目前無法開啟 3D 場景。請使用支援 WebGL 的新版 Chrome、Edge 或 Safari，並確認瀏覽器硬體加速已啟用。';
+  throw err;
+}
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xd2eeec, 35, 79);
+
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 150);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.enablePan = false;
+controls.minDistance = 15;
+controls.maxDistance = 43;
+controls.minPolarAngle = 0.4;
+controls.maxPolarAngle = 1.48;
+controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+controls.autoRotateSpeed = 0.32;
+spinBtn.classList.toggle('active', controls.autoRotate);
+spinBtn.setAttribute('aria-pressed', String(controls.autoRotate));
+
+const sunLight = new THREE.DirectionalLight(0xfff2d3, 3.05);
+sunLight.position.set(-9, 20, 15);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.left = -16;
+sunLight.shadow.camera.right = 16;
+sunLight.shadow.camera.top = 16;
+sunLight.shadow.camera.bottom = -16;
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far = 48;
+sunLight.shadow.bias = -0.00035;
+sunLight.shadow.normalBias = 0.025;
+scene.add(sunLight);
+const skylight = new THREE.HemisphereLight(0xdffcf6, 0x64918b, 2.1);
+scene.add(skylight);
+const fillLight = new THREE.DirectionalLight(0x73c9bf, 1.0);
+fillLight.position.set(10, 6, -12);
+scene.add(fillLight);
+
+const mat = (hex, options={}) => new THREE.MeshStandardMaterial({
+  color: hex, roughness: 0.86, metalness: 0, flatShading: true, ...options
+});
+const grass = [0x7fc79a, 0x91cf9b, 0x8fce8d, 0x9dd49c, 0x82c49a];
+const leafColors = [0x328b70, 0x409e7d, 0x54aa81, 0x6cb78a, 0x7ebd88, 0x87c68e];
+const stoneColors = [0x9ca9a1, 0xb9b7a8, 0x899e99, 0xb4b9aa];
+const trunkMat = mat(0x906b51);
+const shoreMat = mat(0xe5d7a5);
+const whiteFoam = new THREE.MeshBasicMaterial({color:0xe5ffff, transparent:true, opacity:0.68, depthWrite:false, side:THREE.DoubleSide});
+const riverMat = new THREE.MeshPhysicalMaterial({color:0x6acdc7, transparent:true, opacity:.9, roughness:.22, metalness:.02, side:THREE.DoubleSide, depthWrite:false});
+const island = new THREE.Group();
+scene.add(island);
+
+function add(mesh, parent=island, x=0, y=0, z=0) {
+  mesh.position.set(x,y,z);
+  parent.add(mesh);
+  return mesh;
+}
+function createMesh(geometry, material, parent=island, x=0, y=0, z=0, shadow=true) {
+  const mesh = new THREE.Mesh(geometry,material);
+  mesh.position.set(x,y,z);
+  mesh.castShadow = shadow;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+// The entire floating cliff is a single faceted multi-ring geometry.
+// A shared outline prevents gaps between stacked rocky strata.
+const N=14;
+const edges=Array.from({length:N},(_,i)=>({
+  angle:i*TAU/N+Math.PI/14,
+  scale:between(.965,1.045)
+}));
+const rings=[
+  {y:.58,r:8.40},{y:.25,r:8.83},{y:-.33,r:8.65},
+  {y:-1.0,r:8.05},{y:-1.93,r:6.68},{y:-2.95,r:4.64},
+  {y:-3.74,r:1.55},{y:-3.92,r:.24}
+];
+const rockPalette=[
+  [0xe5c69a,0xd8b58e,0xd7bd98,0xf0ce9f],
+  [0xc6ad8f,0xd0b392,0xc0a78c,0xbba18a],
+  [0xbca18b,0xaf9d8d,0xbba990,0x9ca394],
+  [0x9e9a89,0x989c8c,0x919b92,0xaaa18e],
+  [0x7b8c88,0x87978e,0x7d8c86,0x929a8c],
+  [0x617c78,0x758981,0x698480,0x7d8e88],
+  [0x516b68,0x647e7a,0x597570,0x69817c]
+];
+const coords=[];const rockColors=[];
+const putTriangle=(p1,p2,p3,hex)=>{
+  const c=color(hex);
+  for(const p of [p1,p2,p3]) {
+    coords.push(p.x,p.y,p.z);
+    rockColors.push(c.r,c.g,c.b);
+  }
+};
+function ringPoint(ring,i) {
+  const edge=edges[(i+N)%N];
+  return new THREE.Vector3(
+    Math.cos(edge.angle)*ring.r*edge.scale,
+    ring.y+((i%3)-1)*.032,
+    Math.sin(edge.angle)*ring.r*edge.scale
+  );
+}
+for(let level=0;level<rings.length-1;level++){
+  for(let j=0;j<N;j++){
+    const next=(j+1)%N;
+    const a=ringPoint(rings[level],j);
+    const b=ringPoint(rings[level],next);
+    const c=ringPoint(rings[level+1],j);
+    const d=ringPoint(rings[level+1],next);
+    const palette=rockPalette[level];
+    putTriangle(a,c,b,palette[(j+level)%palette.length]);
+    putTriangle(b,c,d,palette[(j+level+1)%palette.length]);
+  }
+}
+const cliffGeo = new THREE.BufferGeometry();
+cliffGeo.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
+cliffGeo.setAttribute('color',new THREE.Float32BufferAttribute(rockColors,3));
+cliffGeo.computeVertexNormals();
+createMesh(cliffGeo,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1,side:THREE.DoubleSide}));
+const grassPositions=[],grassColors=[];
+for(let i=0;i<N;i++){
+  const a=ringPoint(rings[0],i);
+  const b=ringPoint(rings[0],(i+1)%N);
+  const center=new THREE.Vector3(0,.585,0);
+  const c=color(grass[i%grass.length]);
+  for(const v of [center,b,a]){
+    grassPositions.push(v.x,.595,v.z);
+    grassColors.push(c.r,c.g,c.b);
+  }
+}
+const landGeo=new THREE.BufferGeometry();
+landGeo.setAttribute('position',new THREE.Float32BufferAttribute(grassPositions,3));
+landGeo.setAttribute('color',new THREE.Float32BufferAttribute(grassColors,3));
+landGeo.computeVertexNormals();
+createMesh(landGeo,new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:.96,flatShading:true}),island,0,0,0,false);
+
+// Small rounded hills break up the flat island silhouette.
+function hill(x,z,rx,ry,rz,shade){
+  const geo=new THREE.SphereGeometry(1,12,6,0,TAU,0,Math.PI/2);
+  const mesh=createMesh(geo,mat(shade),island,x,.565,z);
+  mesh.scale.set(rx,ry,rz);
+  return mesh;
+}
+hill(3.0,-3.2,2.5,.84,2.7,0x7bbf93);
+hill(4.5,-2.35,1.35,.58,1.8,0x8ccc98);
+hill(-5.3,-3.3,1.6,.5,1.45,0x87c896);
+hill(-4.7,3.9,1.75,.43,1.55,0x8cca98);
+
+// A small spring pond and a sinuous freshwater creek.
+// This is scenery only: no content hotspots or clickable curriculum objects.
+const pond=createMesh(new THREE.CircleGeometry(1.52,48),riverMat,island,-3.12,.667,.35,false);
+pond.rotation.x=-Math.PI/2;
+pond.scale.set(1,.79,1);
+const pondEdge=createMesh(new THREE.TorusGeometry(1.50,.13,5,54),shoreMat,island,-3.12,.65,.35,false);
+pondEdge.rotation.x=-Math.PI/2;
+pondEdge.scale.set(1,.77,1);
+
+const points=[
+  [-1.72,.48],[-.56,.15],[.52,.68],[1.61,1.1],
+  [2.82,1.30],[3.72,2.27],[4.64,3.51],[5.65,4.78],[6.45,5.54]
+].map(([x,z])=>new THREE.Vector3(x,.674,z));
+const stream=new THREE.CatmullRomCurve3(points);
+function ribbon(curve,width,y,material) {
+  const vertices=[],uvs=[],indices=[];
+  const count=90;
+  for(let i=0;i<=count;i++){
+    const t=i/count;
+    const center=curve.getPointAt(t);
+    const tangent=curve.getTangentAt(t);
+    const normal=new THREE.Vector3(-tangent.z,0,tangent.x).normalize();
+    const w=width*(.82+.18*Math.sin(t*8*Math.PI));
+    for(const side of [-1,1]){
+      const p=center.clone().addScaledVector(normal,side*w);
+      vertices.push(p.x,center.y+y,p.z);
+      uvs.push(t,(side+1)/2);
+    }
+    if(i<count){
+      const j=i*2;
+      indices.push(j,j+2,j+1,j+1,j+2,j+3);
+    }
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return createMesh(geometry,material,island,0,0,0,false);
+}
+ribbon(stream,.47,-.028,shoreMat);
+ribbon(stream,.36,.018,riverMat);
+
+const falls=new THREE.Group();
+const fallGeo=new THREE.BufferGeometry();
+const fallPositions=[];
+for(let i=0;i<18;i++){
+  const t=i/18,tn=(i+1)/18;
+  const px=6.47+.17*Math.sin(t*5),pz=5.55+.18*Math.sin(t*5);
+  const x2=6.47+.17*Math.sin(tn*5),z2=5.55+.18*Math.sin(tn*5);
+  const y=.68-t*3.04,y2=.68-tn*3.04;
+  const w=.34+.04*Math.sin(t*TAU);
+  fallPositions.push(px-w,y,pz,px+w,y,pz,x2-w,y2,z2, px+w,y,pz,x2+w,y2,z2,x2-w,y2,z2);
+}
+fallGeo.setAttribute('position',new THREE.Float32BufferAttribute(fallPositions,3));
+fallGeo.computeVertexNormals();
+const waterfall=createMesh(fallGeo,new THREE.MeshBasicMaterial({color:0x94eeea,transparent:true,opacity:.66,side:THREE.DoubleSide,depthWrite:false}),falls,0,0,0,false);
+for(let k=0;k<7;k++){
+  const mist=createMesh(new THREE.IcosahedronGeometry(between(.08,.19),0),
+    new THREE.MeshBasicMaterial({color:0xc9fdf7,transparent:true,opacity:between(.28,.48),depthWrite:false}),
+    falls,6.5+between(-.5,.6),-2.26+between(-.15,.2),5.55+between(-.38,.46),false);
+  mist.scale.y=.46;
+}
+island.add(falls);
+
+// Stylized evergreen and broadleaf trees assembled without any texture/model files.
+function makeTree(x,z,scale,kind){
+  const root=new THREE.Group();
+  root.position.set(x,.60,z);
+  root.rotation.y=between(0,TAU);
+  root.scale.setScalar(scale);
+  const trunk=createMesh(new THREE.CylinderGeometry(.105,.145,.9,5),trunkMat,root,0,.47,0);
+  trunk.castShadow=true;
+  if(kind==='pine'){
+    const leaves=mat(choice([0x317d6c,0x398e72,0x4b9979,0x64a98a]));
+    for(let j=0;j<3;j++){
+      const cone=createMesh(new THREE.ConeGeometry(.65-j*.12,.83,6),leaves,root,0,.97+j*.34,0);
+      cone.rotation.y=j*.3;
+    }
+  }else{
+    const leaves=mat(choice(leafColors));
+    const c1=createMesh(new THREE.DodecahedronGeometry(.66,0),leaves,root,0,1.11,0);
+    const c2=createMesh(new THREE.DodecahedronGeometry(.50,0),leaves,root,-.37,1.03,.20);
+    const c3=createMesh(new THREE.DodecahedronGeometry(.52,0),leaves,root,.35,1.25,-.11);
+    c1.scale.y=1.16;c2.scale.y=.89;c3.scale.y=.92;
+  }
+  island.add(root);
+}
+function creekDistance(x,z){
+  let d=100;
+  for(let j=0;j<=40;j++){
+    const p=stream.getPointAt(j/40);
+    d=Math.min(d,Math.hypot(x-p.x,z-p.z));
+  }
+  return d;
+}
+function validVegetation(x,z,margin=0) {
+  if(Math.hypot(x,z)>7.55-margin) return false;
+  if(Math.hypot(x+3.12,(z-.35)/.79)<2.05+margin) return false;
+  if(creekDistance(x,z)<.74+margin) return false;
+  return true;
+}
+for(let i=0,tries=0;i<48 && tries<1300;tries++){
+  const a=between(0,TAU),r=Math.sqrt(random())*7.8;
+  const x=Math.cos(a)*r,z=Math.sin(a)*r;
+  if(!validVegetation(x,z,.18))continue;
+  if(Math.hypot(x,z)<2.7 && random()<.82)continue;
+  if(x>2&&z<-.5&&z>-5 && random()<.45)continue;
+  makeTree(x,z,between(.58,1.14),random()>.60?'pine':'round');
+  i++;
+}
+
+// Rocks: separate ground detail and tiny coastal rock clusters.
+for(let i=0,tries=0;i<78 && tries<600;tries++){
+  const a=between(0,TAU),r=Math.sqrt(random())*8.08;
+  const x=r*Math.cos(a),z=r*Math.sin(a);
+  if(Math.hypot(x+3.12,(z-.35)/.79)<1.72 || creekDistance(x,z)<.56)continue;
+  const s=between(.12,.39);
+  const mesh=createMesh(new THREE.DodecahedronGeometry(1,0),mat(choice(stoneColors)),island,x,.59+s*.31,z);
+  mesh.scale.set(s*between(.9,1.7),s*between(.48,.9),s*between(.8,1.45));
+  mesh.rotation.set(between(-.3,.3),between(0,TAU),between(-.25,.25));
+  i++;
+}
+// Clumps of grass and small flowers add close-up texture.
+const flowerMats=[0xffd885,0xf7b8c0,0xf8f5d5,0xc1b6ee].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1}));
+const bladeMat=mat(0x529c72,{side:THREE.DoubleSide});
+const bladeGeo=new THREE.ConeGeometry(.067,.28,3);
+const blossomGeo=new THREE.IcosahedronGeometry(.071,0);
+for(let i=0,tries=0;i<180 && tries<1800;tries++){
+  const a=between(0,TAU),r=Math.sqrt(random())*7.8,x=r*Math.cos(a),z=r*Math.sin(a);
+  if(!validVegetation(x,z,.02))continue;
+  const isFlower=random()>.56;
+  if(isFlower){
+    const stem=createMesh(new THREE.CylinderGeometry(.012,.015,.22,3),bladeMat,island,x,.69,z,false);
+    stem.rotation.z=between(-.1,.1);
+    createMesh(blossomGeo,choice(flowerMats),island,x,.83,z,false);
+  }else{
+    const blade=createMesh(bladeGeo,bladeMat,island,x,.7,z,false);
+    blade.rotation.z=between(-.2,.2);
+  }
+  i++;
+}
+
+// Tiny clustered satellite rocks make the island look less geometrically isolated.
+for(const spec of [[-8.8,-2.3,.8],[9.15,1.5,.68],[-1.3,9.22,.66]]){
+  const [x,z,scale]=spec;
+  for(let k=0;k<3;k++){
+    const rock=createMesh(new THREE.IcosahedronGeometry(1,0),mat(choice([0xb2afa0,0x969f95,0x879f93])),scene,
+      x+between(-.43,.43),-3.99+between(.06,.3),z+between(-.38,.38));
+    rock.scale.set(scale*between(.4,.85),scale*between(.35,.8),scale*between(.5,1.0));
+  }
+}
+
+// Glimmering water below the floating island, fully procedural and animated.
+const seaUniforms={uTime:{value:0},uNight:{value:0}};
+const seaMat=new THREE.ShaderMaterial({
+  uniforms:seaUniforms,transparent:true,depthWrite:false,side:THREE.DoubleSide,
+  vertexShader: 'varying vec2 vUv; varying vec3 vPosition; void main(){ vUv=uv; vPosition=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: 'uniform float uTime; uniform float uNight; varying vec2 vUv; varying vec3 vPosition; void main(){float d=length(vUv-vec2(.5));float a=sin(vUv.x*72.0+vUv.y*45.0+uTime*.48);float b=sin(vUv.y*91.0-vUv.x*37.0-uTime*.61);float ripple=(a+b)*.5;float alpha=(1.0-smoothstep(.35,.50,d))*(.39+.05*ripple);vec3 day=vec3(.39,.76,.75)+ripple*.032;vec3 night=vec3(.08,.28,.42)+ripple*.018;gl_FragColor=vec4(mix(day,night,uNight),alpha);}'
+});
+const sea=createMesh(new THREE.PlaneGeometry(69,69),seaMat,scene,0,-4.42,0,false);
+sea.rotation.x=-Math.PI/2;
+const ringMaterial=new THREE.MeshBasicMaterial({color:0x7acbc4,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false});
+const ringsUnder=[];
+for(let j=0;j<4;j++){
+  const ring=createMesh(new THREE.RingGeometry(11+j*3.8,11+j*3.8+.026,100),ringMaterial.clone(),scene,0,-4.38+j*.008,0,false);
+  ring.rotation.x=-Math.PI/2;
+  ringsUnder.push(ring);
+}
+
+// Loose clouds move around the island, helping show the depth of the world.
+const movingClouds=[];
+function cloud(x,y,z,scale,speed){
+  const group=new THREE.Group();
+  group.position.set(x,y,z);
+  const puffMat=new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.77,roughness:1,flatShading:true,depthWrite:false});
+  for(let i=0;i<5;i++){
+    const puff=createMesh(new THREE.IcosahedronGeometry(1,1),puffMat,group,(i-2)*.7,between(-.13,.18),between(-.22,.25),false);
+    puff.scale.set(between(.7,1.15),between(.35,.53),between(.53,.78));
+  }
+  group.scale.setScalar(scale);
+  group.userData={x,speed};
+  scene.add(group);
+  movingClouds.push(group);
+}
+cloud(-12,8,-11,1.5,.22);
+cloud(9.8,7.4,-15,1.15,-.15);
+cloud(18,10,2,1.4,-.18);
+cloud(-17,6,6,1,.11);
+
+// Small orbiting paper-bird silhouettes.
+const birds=[];
+for(let i=0;i<7;i++){
+  const bird=new THREE.Group();
+  const wingGeo=new THREE.ConeGeometry(.24,.6,3);
+  const wingMat=new THREE.MeshBasicMaterial({color:0x6a9e94,side:THREE.DoubleSide});
+  for(const side of [-1,1]){
+    const wing=createMesh(wingGeo,wingMat,bird,side*.17,0,0,false);
+    wing.rotation.z=side*1.16;
+    wing.scale.set(.8,.65,.4);
+  }
+  bird.userData={offset:i*.8,radius:between(10.7,14.3),height:between(3.9,7.8),speed:between(.08,.14)};
+  scene.add(bird);
+  birds.push(bird);
+}
+
+// Firefly glows are revealed at night.
+const glowMats=[];
+const fireflies=[];
+for(let i=0;i<52;i++){
+  const a=between(0,TAU),r=Math.sqrt(random())*7.5;
+  const x=Math.cos(a)*r,z=Math.sin(a)*r;
+  const gm=new THREE.MeshBasicMaterial({color:choice([0xfbe9a9,0xc9fff1,0xe8f5bd]),transparent:true,opacity:0,depthWrite:false});
+  glowMats.push(gm);
+  const dot=createMesh(new THREE.SphereGeometry(.065,6,4),gm,island,x,between(1.15,3.25),z,false);
+  dot.userData={baseY:dot.position.y,phase:between(0,TAU)};
+  fireflies.push(dot);
+}
+const starsMat=new THREE.PointsMaterial({color:0xe2f5ff,size:.095,transparent:true,opacity:0,depthWrite:false});
+const starPositions=[];
+for(let i=0;i<230;i++){
+  const p=new THREE.Vector3(between(-49,49),between(8,35),between(-47,-4));
+  starPositions.push(p.x,p.y,p.z);
+}
+const starsGeo=new THREE.BufferGeometry();
+starsGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
+scene.add(new THREE.Points(starsGeo,starsMat));
+
+const view={
+  target:new THREE.Vector3(0,isMobile()?2.4:-.05,0),
+  position:new THREE.Vector3(isMobile()?21:20,isMobile()?18:15,isMobile()?29:25)
+};
+function resetView(){
+  view.target.set(0,isMobile()?2.4:-.05,0);
+  view.position.set(isMobile()?21:20,isMobile()?18:15,isMobile()?29:25);
+  controls.target.copy(view.target);
+  camera.position.copy(view.position);
+  controls.update();
+}
+resetView();
+
+let nighttime=false;
+let nightMix=0;
+let isDragging=false;
+spinBtn.addEventListener('click',()=>{
+  controls.autoRotate=!controls.autoRotate;
+  spinBtn.classList.toggle('active',controls.autoRotate);
+  spinBtn.setAttribute('aria-pressed',String(controls.autoRotate));
+});
+dayBtn.addEventListener('click',()=>{
+  nighttime=!nighttime;
+  app.classList.toggle('night',nighttime);
+  dayBtn.setAttribute('aria-pressed',String(nighttime));
+  dayIcon.textContent=nighttime?'☀':'☾';
+  dayText.textContent=nighttime?'切換日景':'切換夜景';
+});
+resetBtn.addEventListener('click',resetView);
+renderer.domElement.addEventListener('pointerdown',()=>{isDragging=true});
+window.addEventListener('pointerup',()=>{isDragging=false});
+function resize(){
+  const w=host.clientWidth,h=host.clientHeight;
+  camera.aspect=w/Math.max(1,h);
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,isMobile()?1.55:1.8));
+  renderer.setSize(w,h,false);
+}
+window.addEventListener('resize',resize,{passive:true});
+resize();
+
+// Keeps animation work paused when the page is hidden; caps long time jumps.
+const clock=new THREE.Clock();
+let elapsed=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+  if(document.hidden)return;
+  elapsed+=dt;
+  controls.update(dt);
+  nightMix=THREE.MathUtils.damp(nightMix,nighttime?1:0,1.7,dt);
+  skylight.intensity=THREE.MathUtils.lerp(2.1,.53,nightMix);
+  sunLight.intensity=THREE.MathUtils.lerp(3.05,.48,nightMix);
+  sunLight.color.copy(color(0xfff2d3)).lerp(color(0xb2bfff),nightMix);
+  fillLight.intensity=THREE.MathUtils.lerp(1,.58,nightMix);
+  renderer.toneMappingExposure=THREE.MathUtils.lerp(1.28,1.16,nightMix);
+  scene.fog.color.copy(color(0xd2eeec)).lerp(color(0x203850),nightMix);
+  seaUniforms.uTime.value=elapsed;
+  seaUniforms.uNight.value=nightMix;
+  ringsUnder.forEach((r,i)=>{r.material.opacity=(.17+.025*Math.sin(elapsed*.65-i))*(1-nightMix*.25)});
+  movingClouds.forEach((c,i)=>{
+    c.position.x=c.userData.x+Math.sin(elapsed*.08+i*1.1)*1.6;
+    c.position.y+=Math.sin(elapsed*.52+i)*.0007;
+    c.children.forEach(child=>{child.material.opacity=.76-nightMix*.55});
+  });
+  birds.forEach((bird,i)=>{
+    const {offset,radius,height,speed}=bird.userData;
+    const angle=elapsed*speed+offset;
+    bird.position.set(Math.cos(angle)*radius,height+Math.sin(elapsed*2+i)*.10,Math.sin(angle)*radius);
+    bird.rotation.y=-angle+.5;
+  });
+  starsMat.opacity=nightMix*.82;
+  fireflies.forEach((f,i)=>{
+    f.position.y=f.userData.baseY+Math.sin(elapsed*1.2+f.userData.phase)*.25;
+    glowMats[i].opacity=nightMix*(.45+.4*(.5+.5*Math.sin(elapsed*2.4+f.userData.phase)));
+  });
+  waterfall.material.opacity=.68+.075*Math.sin(elapsed*2.8);
+  renderer.render(scene,camera);
+}
+animate();
+setTimeout(()=>loading.classList.add('done'),450);
