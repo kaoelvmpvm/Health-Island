@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js?v=0.3.1';
+import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js?v=0.5.0';
 
 // Each station lives on its own floating island; coordinates are world-space.
 const world=(topic,n)=>({
