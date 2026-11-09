@@ -50,13 +50,14 @@ function placardTexture(text,accent){
  ctx.fillText(text,265,80);
  const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
-function districtSign(group,text,x,z){
+function districtSign(group,topic,x,z){
  const root=new THREE.Group();root.position.set(x,groundY,z);group.add(root);
- const accent=TOPICS[text];
+ const accent=TOPICS[topic];
+ if(!accent)throw new Error('未知的主題島：'+topic);
  mesh(root,new THREE.CylinderGeometry(.55,.60,.14,8),material(0xe1d7bc),0,.07,0);
  for(const dx of [-.86,.86])mesh(root,new THREE.CylinderGeometry(.04,.05,1.60,6),wood,dx,.87,0);
  mesh(root,new THREE.BoxGeometry(2.05,.73,.12),white,0,1.5,0);
- const signMat=new THREE.MeshBasicMaterial({map:placardTexture(text,accent.color),side:THREE.DoubleSide});
+ const signMat=new THREE.MeshBasicMaterial({map:placardTexture(topic+'島',accent.color),side:THREE.DoubleSide});
  mesh(root,new THREE.PlaneGeometry(1.89,.59),signMat,0,1.5,.067,false);
  const back=mesh(root,new THREE.PlaneGeometry(1.89,.59),signMat,0,1.5,-.067,false);back.rotation.y=Math.PI;
  const flag=mesh(root,new THREE.ConeGeometry(.31,.47,3),material(accent.hex),0,2.03,0);
@@ -132,7 +133,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
    const ids=lessons.filter(l=>l.topic===t).sort((a,b)=>a.id.localeCompare(b.id)).map(l=>l.id);
    connectStations(islands[t],t,ids[0],ids[1],TOPICS[t].hex);
    connectStations(islands[t],t,ids[1],ids[2],TOPICS[t].hex);
-   districtSign(islands[t],t+'島',0,-2.72);
+   districtSign(islands[t],t,0,-2.72);
  });
 
  const app=document.getElementById('app');
