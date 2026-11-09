@@ -1,0 +1,96 @@
+{
+  "version": "0.2.0",
+  "description": "青春系列：三主題 × 認知、情意、技能，共九個現有 GitHub Pages 教材入口。",
+  "lessons": [
+    {
+      "id": "1-1",
+      "topic": "不染色",
+      "dimension": "認知",
+      "series": "青春補給",
+      "format": "互動遊戲",
+      "title": "青春補給－不染色",
+      "url": "https://kaoelvmpvm.github.io/youth-1-1-stay-clear-cognition/",
+      "repository": "https://github.com/kaoelvmpvm/youth-1-1-stay-clear-cognition"
+    },
+    {
+      "id": "2-1",
+      "topic": "不染色",
+      "dimension": "情意",
+      "series": "青春心語 Yes",
+      "format": "青春倡議徽章提示語產生器",
+      "title": "青春心語 Yes－不染色",
+      "url": "https://kaoelvmpvm.github.io/youth-2-1-stay-clear-affect/",
+      "repository": "https://github.com/kaoelvmpvm/youth-2-1-stay-clear-affect"
+    },
+    {
+      "id": "3-1",
+      "topic": "不染色",
+      "dimension": "技能",
+      "series": "青春練功",
+      "format": "分支情境遊戲",
+      "title": "青春練功－不染色",
+      "url": "https://kaoelvmpvm.github.io/youth-3-1-stay-clear-skill/",
+      "repository": "https://github.com/kaoelvmpvm/youth-3-1-stay-clear-skill"
+    },
+    {
+      "id": "1-2",
+      "topic": "不炫耀",
+      "dimension": "認知",
+      "series": "青春補給",
+      "format": "互動遊戲",
+      "title": "青春補給－不炫耀",
+      "url": "https://kaoelvmpvm.github.io/youth-1-2-no-brag-cognition/",
+      "repository": "https://github.com/kaoelvmpvm/youth-1-2-no-brag-cognition"
+    },
+    {
+      "id": "2-2",
+      "topic": "不炫耀",
+      "dimension": "情意",
+      "series": "青春心語 Yes",
+      "format": "青春倡議徽章提示語產生器",
+      "title": "青春心語 Yes－不炫耀",
+      "url": "https://kaoelvmpvm.github.io/youth-2-2-no-brag-affect/",
+      "repository": "https://github.com/kaoelvmpvm/youth-2-2-no-brag-affect"
+    },
+    {
+      "id": "3-2",
+      "topic": "不炫耀",
+      "dimension": "技能",
+      "series": "青春練功",
+      "format": "分支情境遊戲",
+      "title": "青春練功－不炫耀",
+      "url": "https://kaoelvmpvm.github.io/youth-3-2-no-brag-skill/",
+      "repository": "https://github.com/kaoelvmpvm/youth-3-2-no-brag-skill"
+    },
+    {
+      "id": "1-3",
+      "topic": "不迷路",
+      "dimension": "認知",
+      "series": "青春補給",
+      "format": "互動遊戲",
+      "title": "青春補給－不迷路",
+      "url": "https://kaoelvmpvm.github.io/youth-1-3-no-lost-cognition/",
+      "repository": "https://github.com/kaoelvmpvm/youth-1-3-no-lost-cognition"
+    },
+    {
+      "id": "2-3",
+      "topic": "不迷路",
+      "dimension": "情意",
+      "series": "青春心語 Yes",
+      "format": "青春倡議徽章提示語產生器",
+      "title": "青春心語 Yes－不迷路",
+      "url": "https://kaoelvmpvm.github.io/youth-2-3-no-lost-affect/",
+      "repository": "https://github.com/kaoelvmpvm/youth-2-3-no-lost-affect"
+    },
+    {
+      "id": "3-3",
+      "topic": "不迷路",
+      "dimension": "技能",
+      "series": "青春練功",
+      "format": "分支情境遊戲",
+      "title": "青春練功－不迷路",
+      "url": "https://kaoelvmpvm.github.io/youth-3-3-no-lost-skill/",
+      "repository": "https://github.com/kaoelvmpvm/youth-3-3-no-lost-skill"
+    }
+  ]
+}
