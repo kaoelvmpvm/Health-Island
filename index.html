@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#d8f3ee" />
+  <meta name="description" content="健康島 Health Island — 一座可自由探索的 3D 空島原型。"/>
+  <title>健康島 Health Island｜3D 空島實驗</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <main id="app" aria-label="健康島 3D 互動展示">
+    <div id="scene" aria-label="可旋轉縮放的立體島嶼"></div>
+    <div class="sky-glow" aria-hidden="true"></div>
+    <div class="grid-haze" aria-hidden="true"></div>
+    <div id="loading" class="loading" role="status" aria-live="polite">
+      <div class="loading-mark"><span></span><span></span><span></span></div>
+      <strong>正在建造你的健康島</strong>
+      <small>調整地形、植栽與光線中…</small>
+    </div>
+
+    <header class="topbar">
+      <a class="identity" href="./" aria-label="健康島首頁">
+        <span class="identity-icon">✳</span>
+        <span class="identity-wordmark"><b>HEALTH ISLAND</b><small>健康島 · 3D 探索計畫</small></span>
+      </a>
+      <div class="build-tag"><span class="tag-dot"></span> WORLD 01 <span class="tag-separator">/</span> 空島原型</div>
+    </header>
+
+    <section class="intro" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="eyebrow-line"></span> THE FIRST ISLAND · 001</div>
+      <h1 id="hero-title">一座島，<br /><em>無限可能。</em></h1>
+      <p>這是一座還沒有放入教材的健康島。<br />先用雙手探索它的空間、光影與細節。</p>
+      <div class="feature-pills"><span>✦ 即時 3D</span><span>✦ 動態景觀</span><span>✦ 手機適用</span></div>
+    </section>
+
+    <aside class="scene-note" aria-label="展示狀態">
+      <span class="scene-note-index">01 / TERRAIN STUDY</span>
+      <span class="scene-note-title">一切從地形開始</span>
+      <span class="scene-note-line"></span>
+      <span class="scene-note-sub">沒有課程、沒有建築任務<br />只有一座活著的小島。</span>
+    </aside>
+
+    <div class="compass" aria-hidden="true"><span>N</span><i></i><span>S</span></div>
+
+    <nav class="toolbar" aria-label="3D 場景控制">
+      <button id="spinBtn" class="tool active" type="button" aria-pressed="true" title="暫停或開啟自動旋轉">
+        <span class="tool-icon">⟳</span><span class="tool-text">自動旋轉</span>
+      </button>
+      <span class="tool-divider"></span>
+      <button id="dayBtn" class="tool" type="button" aria-pressed="false" title="切換白天與夜晚">
+        <span id="dayIcon" class="tool-icon">☾</span><span id="dayText" class="tool-text">切換夜景</span>
+      </button>
+      <span class="tool-divider"></span>
+      <button id="resetBtn" class="tool" type="button" title="還原初始視角">
+        <span class="tool-icon">⌖</span><span class="tool-text">重設視角</span>
+      </button>
+    </nav>
+
+    <div class="hint"><span class="hint-symbol">↔</span><span>拖曳旋轉</span><i></i><span>滾輪 / 雙指縮放</span></div>
+    <div class="edition">HEALTH ISLAND <span>—</span> ENVIRONMENT PROTOTYPE v0.1</div>
+    <div id="error" class="error" hidden role="alert"></div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
