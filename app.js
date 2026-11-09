@@ -480,7 +480,7 @@ let elapsed=0;
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
-  if(document.hidden)return;
+  if(document.hidden || (learningWorld && learningWorld.isViewerOpen()))return;
   elapsed+=dt;
   controls.update(dt);
   nightMix=THREE.MathUtils.damp(nightMix,nighttime?1:0,1.7,dt);
