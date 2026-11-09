@@ -137,6 +137,9 @@ function path(root,a,b,color){
   }
 }
 function bridge(scene,info){
+  const root=new THREE.Group();
+  root.name='通往'+(info.icon||'主題島')+'的踏石';
+  scene.add(root);
   const from=new THREE.Vector2(0,0);
   const to=new THREE.Vector2(info.x,info.z);
   const unit=to.clone().normalize(),length=to.length();
@@ -145,10 +148,11 @@ function bridge(scene,info){
   const brightMat=new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.65,depthWrite:false});
   for(let d=start+.15;d<end;d+=.64){
     const x=unit.x*d,z=unit.y*d;
-    const disc=add(scene,new THREE.CylinderGeometry(.26,.32,.15,8),bridgeMat,x,.25,z,false);
+    const disc=add(root,new THREE.CylinderGeometry(.26,.32,.15,8),bridgeMat,x,.25,z,false);
     disc.rotation.y=d*.4;
-    const glow=add(scene,new THREE.CylinderGeometry(.14,.17,.018,8),brightMat,x,.335,z,false);
+    const glow=add(root,new THREE.CylinderGeometry(.14,.17,.018,8),brightMat,x,.335,z,false);
   }
+  return root;
 }
 // Returns three separate floating landmasses in the world, *not*
 // three colored districts on the original center island.
@@ -163,7 +167,7 @@ export function buildSatelliteIslands(scene){
     decoration(group,topic,info,i);
     path(group,LOCAL_STATIONS[0],LOCAL_STATIONS[2],info.color);
     path(group,LOCAL_STATIONS[1],LOCAL_STATIONS[2],info.color);
-    bridge(scene,info);
+    group.userData.bridge=bridge(scene,info);
     roots[topic]=group;
   });
   return roots;
