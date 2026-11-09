@@ -294,7 +294,7 @@ export function createGuide({island,camera,renderer}){
    if(distance>9||!overlay.hidden)return;
    const rect=canvas.getBoundingClientRect();
    mouse.x=((event.clientX-rect.left)/rect.width)*2-1;
-   mouse.y=-((event.clientY-rect.top)/rect.height)*2-1;
+   mouse.y=-((event.clientY-rect.top)/rect.height*2-1);
    raycaster.setFromCamera(mouse,camera);
    if(raycaster.intersectObject(sceneModel.hit,false).length)open();
  });
