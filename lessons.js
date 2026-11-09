@@ -104,7 +104,7 @@ function makeStation(group,lesson,pickables,animated){
  const hitbox=mesh(root,new THREE.CylinderGeometry(.88,.9,2.7,8),
     new THREE.MeshBasicMaterial({visible:false,depthWrite:false}),0,1.33,0,false);
  hitbox.userData.lessonId=lesson.id;pickables.push(hitbox);
- animated.push({beacon,halo,spot,lesson});
+ animated.push({root,beacon,halo,spot,lesson});
 }
 function connectStations(group,topic,a,b,hex){
  const origin=TOPIC_ISLANDS[topic];
@@ -118,13 +118,19 @@ function connectStations(group,topic,a,b,hex){
    tile.rotation.y=i*.47;
  }
 }
-export async function setupLearningIsland({scene,camera,renderer,controls}){
+export async function setupLearningIsland({scene,camera,renderer,controls,quest}){
  const response=await fetch('./data/lessons.json',{cache:'no-cache'});
  if(!response.ok)throw Error('無法讀取教材清單 HTTP '+response.status);
  const payload=await response.json(),lessons=payload.lessons;
  if(!Array.isArray(lessons)||lessons.length!==9)throw Error('教材清單應有九個據點');
  const byId=Object.fromEntries(lessons.map(l=>[l.id,l]));
  const pickables=[],animated=[];
+ const questStage=()=>quest?.getStage?.()??0;
+ const unlockedTopic=topic=>topic==='不炫耀' && questStage()>=1;
+ const unlockedLesson=id=>(id==='1-2'&&questStage()>=1)||(id==='2-2'&&questStage()>=2);
+ const initialStage=questStage();
+ const cards=[];
+
  // Leave the original central island as an environmental hub and add
  // exactly three physical satellite landmasses for the nine youth lessons.
  const islands=buildSatelliteIslands(scene);
@@ -139,7 +145,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
  const app=document.getElementById('app');
  const openDirectory=append(app,'button',{id:'openDirectory',className:'lesson-trail',type:'button','aria-label':'開啟青春探索教材地圖'},'▦ 四島探索地圖  9');
  const switcher=append(app,'nav',{className:'island-switcher','aria-label':'健康島分島導覽'});
- const overviewBtn=append(switcher,'button',{type:'button',className:'island-switch active','aria-pressed':'true'},'◈ 四島總覽');
+ const overviewBtn=append(switcher,'button',{type:'button',className:'island-switch active','aria-pressed':'true'},'◈ 世界總覽');
  const islandBtns=new Map();
  for(const topic of TOPIC_ORDER){
    const btn=append(switcher,'button',{type:'button',className:'island-switch','aria-pressed':'false'},TOPICS[topic].icon+' '+topic+'島');
@@ -161,7 +167,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
  const dirClose=append(directory,'button',{className:'learn-close',type:'button','aria-label':'關閉教材地圖'},'×');
  append(directory,'div',{className:'eyebrow'},'THE LEARNING ARCHIPELAGO');
  append(directory,'h2',{id:'directoryTitle'},'青春探索地圖 · 9 個學習據點');
- append(directory,'p',{className:'directory-desc'},'中央健康島外圍共有不染色島、不炫耀島、不迷路島；每座分島各有認知、情意、技能三個教材據點。');
+ const directoryDesc=append(directory,'p',{className:'directory-desc'},'完成導覽員的行前閱讀，才能讓不炫耀島升起。其餘島嶼與塔樓將依任務逐步開放。');
  const grid=append(directory,'div',{className:'directory-grid'});
  const viewer=append(app,'section',{id:'learnViewer',className:'learn-viewer',hidden:true,role:'dialog','aria-modal':'true','aria-label':'教材體驗視窗'});
  const viewerTop=append(viewer,'div',{className:'viewer-top'});
@@ -199,7 +205,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
      append(card,'span',{className:'card-number'},l.id);
      const box=append(card,'span');
      append(box,'strong',{},l.series+' · '+l.dimension);
-     append(box,'small',{},l.format);
+     const status=append(box,'small',{},l.format);
+     cards.push({card,status,lesson:l});
      card.addEventListener('click',()=>{backdrop.hidden=true;select(l.id)});
    });
  }
@@ -213,6 +220,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
    b.classList.remove('active');b.setAttribute('aria-pressed','false');
  }
  function moveTo(topic,instant=false){
+   if(topic&&!unlockedTopic(topic)){quest?.open?.();return}
    mode=topic;
    stopSpin();
    const origin=topic?TOPIC_ISLANDS[topic]:{x:0,z:0};
@@ -230,6 +238,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
    });
  }
  function visit(topic){
+   if(!unlockedTopic(topic)){quest?.open?.();return}
    closePanel();
    moveTo(topic);
  }
@@ -239,6 +248,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
  }
  function select(id){
    const l=byId[id];if(!l)return;
+   if(!unlockedLesson(id)){quest?.open?.();return}
    if(mode!==l.topic)moveTo(l.topic);
    selected=l;stopSpin();backdrop.hidden=true;
    const t=TOPICS[l.topic],d=DIMS[l.dimension];
@@ -291,18 +301,70 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
    const rect=canvas.getBoundingClientRect();
    mouse.set((e.clientX-rect.left)/rect.width*2-1, -((e.clientY-rect.top)/rect.height*2-1));
    raycaster.setFromCamera(mouse,camera);
-   const hit=raycaster.intersectObjects(pickables,false)[0];
+   const allowed=pickables.filter(p=>unlockedLesson(p.userData.lessonId));
+   const hit=raycaster.intersectObjects(allowed,false)[0];
    if(hit){select(hit.object.userData.lessonId);return;}
    // Clicking on a satellite's terrain focuses that island as well.
-   const landMeshes=TOPIC_ORDER.map(t=>islands[t].children[0]);
+   const landMeshes=TOPIC_ORDER.filter(t=>unlockedTopic(t)).map(t=>islands[t].children[0]);
    const landHit=raycaster.intersectObjects(landMeshes,false)[0];
    if(landHit){
      const topic=TOPIC_ORDER.find(t=>islands[t].children[0]===landHit.object);
      if(topic)visit(topic);
    }
  });
+ // A physical island is initially submerged. Only a completed reading quiz
+ // can raise the first island; each password raises the next tower.
  const v=new THREE.Vector3(),forward=new THREE.Vector3();
+ let risingIsland=false;
+ const risingTowers=new Set();
+ function syncQuest(stage,previousStage){
+   const initial=stage===previousStage;
+   for(const topic of TOPIC_ORDER){
+     const root=islands[topic];
+     const allowed=topic==='不炫耀'&&stage>=1;
+     const wasAllowed=topic==='不炫耀'&&previousStage>=1;
+     root.userData.bridge.visible=allowed;
+     if(!allowed){root.visible=false;root.position.y=-11;risingIsland=false}
+     else if(initial||wasAllowed){root.visible=true;root.position.y=0}
+     else{root.visible=true;root.position.y=-11;risingIsland=true}
+     const b=islandBtns.get(topic);
+     b.disabled=!allowed;b.classList.toggle('is-locked',!allowed);
+     b.setAttribute('aria-label',allowed?'前往'+topic+'島':topic+'島尚未解鎖');
+   }
+   for(const entry of animated){
+     const id=entry.lesson.id;
+     const allowed=(id==='1-2'&&stage>=1)||(id==='2-2'&&stage>=2);
+     const previously=(id==='1-2'&&previousStage>=1)||(id==='2-2'&&previousStage>=2);
+     if(!allowed){entry.root.visible=false;entry.root.position.y=groundY;risingTowers.delete(id)}
+     else if(initial||previously){entry.root.visible=true;entry.root.position.y=groundY}
+     else{entry.root.visible=true;entry.root.position.y=groundY-2.75;risingTowers.add(id)}
+   }
+   for(const row of cards){
+     const enabled=(row.lesson.id==='1-2'&&stage>=1)||(row.lesson.id==='2-2'&&stage>=2);
+     row.card.disabled=!enabled;row.card.classList.toggle('is-locked',!enabled);
+     row.card.setAttribute('aria-label',enabled?row.lesson.title:row.lesson.title+'，尚未解鎖');
+     row.status.textContent=row.lesson.format+(enabled?' · 已開放':' · 🔒 未開放');
+   }
+   directoryDesc.textContent=stage===0?
+     '先和中央主島的導覽小人完成行前閱讀與兩題檢核，解鎖不炫耀島。':
+     stage===1?'不炫耀島已升起，目前僅開放 1-2 認知塔；完成遊戲並輸入密碼可解鎖 2-2。':
+     '不炫耀島的 1-2 與 2-2 已開放。第三塔和其餘分島會在後續版本加入。';
+   if(!unlockedTopic(mode))goOverview(true);
+ }
  function update(dt,elapsed){
+   if(risingIsland){
+     const root=islands['不炫耀'];
+     root.position.y=THREE.MathUtils.damp(root.position.y,0,1.45,dt);
+     if(Math.abs(root.position.y)<.025){root.position.y=0;risingIsland=false}
+   }
+   for(const id of [...risingTowers]){
+     const tower=animated.find(item=>item.lesson.id===id);
+     if(!tower){risingTowers.delete(id);continue}
+     tower.root.position.y=THREE.MathUtils.damp(tower.root.position.y,groundY,2,dt);
+     if(Math.abs(tower.root.position.y-groundY)<.025){
+       tower.root.position.y=groundY;risingTowers.delete(id);
+     }
+   }
    if(flight){
      flight.t=Math.min(1,flight.t+dt/flight.duration);
      const k=1-Math.pow(1-flight.t,3);
@@ -313,7 +375,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
    }
    camera.getWorldDirection(forward);
    for(const [topic,node] of islandLabels){
-     if(mode!=='overview'){node.classList.add('hidden');continue;}
+     if(mode!=='overview'||!unlockedTopic(topic)){node.classList.add('hidden');continue;}
      const origin=TOPIC_ISLANDS[topic];
      v.set(origin.x,4.1,origin.z).project(camera);
      const x=(v.x*.5+.5)*canvas.clientWidth;
@@ -331,7 +393,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
      a.halo.rotation.z+=dt*.5;
      a.halo.material.opacity=(selected?.id===a.lesson.id) ? .95 : .52+.17*Math.sin(elapsed*1.5);
      const b=markers.get(a.lesson.id);
-     if(mode!==a.lesson.topic){b.classList.add('hidden');continue;}
+     if(mode!==a.lesson.topic||!unlockedLesson(a.lesson.id)){b.classList.add('hidden');continue;}
      v.set(a.spot.x,3.05,a.spot.z);
      if(v.clone().sub(camera.position).dot(forward)<0){b.classList.add('hidden');continue}
      v.project(camera);
@@ -340,6 +402,12 @@ export async function setupLearningIsland({scene,camera,renderer,controls}){
      if(x<24||x>canvas.clientWidth-24||y<80||y>canvas.clientHeight-68||v.z>1)b.classList.add('hidden');
      else{b.classList.remove('hidden');b.style.left=x+'px';b.style.top=y+'px'}
    }
+ }
+ if(quest){
+   quest.setNavigator({goTo:visit,goOverview,openLesson:select});
+   quest.onChange(syncQuest);
+ }else{
+   syncQuest(0,0);
  }
  return {update,lessons,isViewerOpen:()=>!viewer.hidden,goOverview};
 }
