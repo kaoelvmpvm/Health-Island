@@ -178,7 +178,10 @@ export function createGuide({island,camera,renderer}){
          feedback.textContent='尚有答案需要調整。可以返回閱讀，再思考「尊重界線」和「密碼解鎖」的意義。';
          return;
        }
-       setStage(1);view='raised';render();
+       // Reveal the world before showing another dialogue so the rise can be seen.
+       setStage(1);close();
+       navigation?.goOverview?.();
+       setTimeout(()=>{if(overlay.hidden && stage===1)open('raised')},3800);
      });
    }else if(view==='raised'){
      content.innerHTML='<div class="guide-success-icon">✦</div>'+
@@ -201,7 +204,10 @@ export function createGuide({island,camera,renderer}){
          content.querySelector('#codeFeedback').textContent='密碼不正確。請先完成 1-2 遊戲，在通關畫面找尋青春密碼。';
          return;
        }
-       setStage(2);view='unlocked';render();
+       // The new tower has a rising animation; don't cover it with the dialog.
+       setStage(2);close();
+       navigation?.goTo?.('不炫耀');
+       setTimeout(()=>{if(overlay.hidden && stage===2)open('unlocked')},2600);
      });
    }else if(view==='unlocked'){
      content.innerHTML='<div class="guide-success-icon">✧</div>'+
@@ -247,7 +253,6 @@ export function createGuide({island,camera,renderer}){
  function update(dt,elapsed){
    sceneModel.handRight.rotation.z=-.22+Math.sin(elapsed*2.15)*.36;
    sceneModel.root.rotation.y=.045*Math.sin(elapsed*.9);
-   sceneModel.ring.material.emissive=hexColor;
    sceneModel.ring.material.emissiveIntensity=.1+.08*Math.sin(elapsed*2);
    projected.set(NPC.x,3.59,NPC.z).project(camera);
    const x=(projected.x*.5+.5)*canvas.clientWidth;
@@ -258,7 +263,6 @@ export function createGuide({island,camera,renderer}){
      marker.classList.remove('hidden');marker.style.left=x+'px';marker.style.top=y+'px';
    }
  }
- const hexColor=new THREE.Color(0xe8c16c);
  shortcut.addEventListener('click',()=>open());
  marker.addEventListener('click',()=>open());
  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
