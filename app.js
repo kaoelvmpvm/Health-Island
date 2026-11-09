@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=0.3.1';
+import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=0.5.0';
+import { createGuide, GUIDE_POSITION } from './guide.js?v=0.5.0';
 import { createTreasureVault, VAULT_LOCATION } from './vault.js?v=0.4.0';
 
 // Health Island v0.3 — central nature island and three external youth islands.
@@ -288,6 +289,8 @@ function creekDistance(x,z){
   return d;
 }
 function validVegetation(x,z,margin=0) {
+  // Leave an open standing place for the central guide next to the vault.
+  if(Math.hypot(x-GUIDE_POSITION.x,z-GUIDE_POSITION.z)<1.35+margin)return false;
   // Keep the central curriculum vault's platform, entrance and stairs clear.
   if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.83+margin)return false;
   // Reserve clear walking and interaction space around the nine learning stations.
@@ -316,6 +319,7 @@ for(let i=0,tries=0;i<78 && tries<600;tries++){
   if(Math.hypot(x+3.12,(z-.35)/.79)<1.72 || creekDistance(x,z)<.56)continue;
   if(Object.values(LEARNING_LOCATIONS).some(p=>Math.hypot(x-p.x,z-p.z)<1.04))continue;
   if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.76)continue;
+  if(Math.hypot(x-GUIDE_POSITION.x,z-GUIDE_POSITION.z)<1.35)continue;
   const s=between(.12,.39);
   const mesh=createMesh(new THREE.DodecahedronGeometry(1,0),mat(choice(stoneColors)),island,x,.59+s*.31,z);
   mesh.scale.set(s*between(.9,1.7),s*between(.48,.9),s*between(.8,1.45));
@@ -443,6 +447,7 @@ resetView();
 // The central main island now carries a future curriculum-area landmark.
 // No navigation target is registered until the curriculum area exists.
 const centralVault=createTreasureVault({island,camera,renderer});
+const guide=createGuide({island,camera,renderer});
 
 let nighttime=false;
 let nightMix=0;
@@ -466,7 +471,7 @@ resetBtn.addEventListener('click',()=>{
 
 // Independent module: 3 satellite islands × 3 learning dimensions.
 let learningWorld=null;
-setupLearningIsland({scene,camera,renderer,controls})
+setupLearningIsland({scene,camera,renderer,controls,quest:guide})
   .then(world=>{learningWorld=world})
   .catch(err=>{
     console.error('Learning island initialization failed',err);
@@ -524,6 +529,7 @@ function animate(){
   waterfall.material.opacity=.68+.075*Math.sin(elapsed*2.8);
   if(learningWorld)learningWorld.update(dt,elapsed);
   centralVault.update(dt,elapsed,nightMix);
+  guide.update(dt,elapsed);
   renderer.render(scene,camera);
 }
 animate();
