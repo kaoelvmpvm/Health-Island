@@ -319,13 +319,16 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  const risingTowers=new Set();
  function syncQuest(stage,previousStage){
    const initial=stage===previousStage;
+   // A locked neighboring island must not cancel another island's rise.
+   if(initial||stage===0)risingIsland=false;
    for(const topic of TOPIC_ORDER){
      const root=islands[topic];
      const allowed=topic==='不炫耀'&&stage>=1;
      const wasAllowed=topic==='不炫耀'&&previousStage>=1;
      root.userData.bridge.visible=allowed;
-     if(!allowed){root.visible=false;root.position.y=-11;risingIsland=false}
-     else if(initial||wasAllowed){root.visible=true;root.position.y=0}
+     if(!allowed){root.visible=false;root.position.y=-11}
+     else if(initial){root.visible=true;root.position.y=0}
+     else if(wasAllowed){root.visible=true}
      else{root.visible=true;root.position.y=-11;risingIsland=true}
      const b=islandBtns.get(topic);
      b.disabled=!allowed;b.classList.toggle('is-locked',!allowed);
@@ -336,7 +339,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      const allowed=(id==='1-2'&&stage>=1)||(id==='2-2'&&stage>=2);
      const previously=(id==='1-2'&&previousStage>=1)||(id==='2-2'&&previousStage>=2);
      if(!allowed){entry.root.visible=false;entry.root.position.y=groundY;risingTowers.delete(id)}
-     else if(initial||previously){entry.root.visible=true;entry.root.position.y=groundY}
+     else if(initial){entry.root.visible=true;entry.root.position.y=groundY}
+     else if(previously){entry.root.visible=true}
      else{entry.root.visible=true;entry.root.position.y=groundY-2.75;risingTowers.add(id)}
    }
    for(const row of cards){
