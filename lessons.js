@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {isIslandUnlocked,isTowerUnlocked} from './quest-rules.js?v=0.6.0';
 import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js?v=0.5.0';
 
 // Each station lives on its own floating island; coordinates are world-space.
@@ -126,9 +127,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  const byId=Object.fromEntries(lessons.map(l=>[l.id,l]));
  const pickables=[],animated=[];
  const questStage=()=>quest?.getStage?.()??0;
- const unlockedTopic=topic=>topic==='不炫耀' && questStage()>=1;
- const unlockedLesson=id=>(id==='1-2'&&questStage()>=1)||(id==='2-2'&&questStage()>=2);
- const initialStage=questStage();
+ const unlockedTopic=topic=>isIslandUnlocked(topic,questStage());
+ const unlockedLesson=id=>isTowerUnlocked(id,questStage());
  const cards=[];
 
  // Leave the original central island as an environmental hub and add
@@ -315,51 +315,68 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  // A physical island is initially submerged. Only a completed reading quiz
  // can raise the first island; each password raises the next tower.
  const v=new THREE.Vector3(),forward=new THREE.Vector3();
- let risingIsland=false;
+ const risingIslands=new Set();
  const risingTowers=new Set();
  function syncQuest(stage,previousStage){
    const initial=stage===previousStage;
-   // A locked neighboring island must not cancel another island's rise.
-   if(initial||stage===0)risingIsland=false;
+   // Maintain independent rise states so the second island cannot cancel
+   // the animation of an existing island or previously unlocked tower.
+   if(initial||stage===0)risingIslands.clear();
    for(const topic of TOPIC_ORDER){
      const root=islands[topic];
-     const allowed=topic==='不炫耀'&&stage>=1;
-     const wasAllowed=topic==='不炫耀'&&previousStage>=1;
+     const allowed=isIslandUnlocked(topic,stage);
+     const wasAllowed=isIslandUnlocked(topic,previousStage);
      root.userData.bridge.visible=allowed;
-     if(!allowed){root.visible=false;root.position.y=-11}
-     else if(initial){root.visible=true;root.position.y=0}
-     else if(wasAllowed){root.visible=true}
-     else{root.visible=true;root.position.y=-11;risingIsland=true}
+     if(!allowed){
+       root.visible=false;root.position.y=-11;risingIslands.delete(topic);
+     }else if(initial){
+       root.visible=true;root.position.y=0;risingIslands.delete(topic);
+     }else if(wasAllowed){
+       root.visible=true;
+     }else{
+       root.visible=true;root.position.y=-11;risingIslands.add(topic);
+     }
      const b=islandBtns.get(topic);
      b.disabled=!allowed;b.classList.toggle('is-locked',!allowed);
      b.setAttribute('aria-label',allowed?'前往'+topic+'島':topic+'島尚未解鎖');
    }
    for(const entry of animated){
      const id=entry.lesson.id;
-     const allowed=(id==='1-2'&&stage>=1)||(id==='2-2'&&stage>=2);
-     const previously=(id==='1-2'&&previousStage>=1)||(id==='2-2'&&previousStage>=2);
-     if(!allowed){entry.root.visible=false;entry.root.position.y=groundY;risingTowers.delete(id)}
-     else if(initial){entry.root.visible=true;entry.root.position.y=groundY}
-     else if(previously){entry.root.visible=true}
-     else{entry.root.visible=true;entry.root.position.y=groundY-2.75;risingTowers.add(id)}
+     const allowed=isTowerUnlocked(id,stage);
+     const previously=isTowerUnlocked(id,previousStage);
+     if(!allowed){
+       entry.root.visible=false;entry.root.position.y=groundY;risingTowers.delete(id);
+     }else if(initial){
+       entry.root.visible=true;entry.root.position.y=groundY;risingTowers.delete(id);
+     }else if(previously){
+       entry.root.visible=true;
+     }else{
+       entry.root.visible=true;entry.root.position.y=groundY-2.75;risingTowers.add(id);
+     }
    }
    for(const row of cards){
-     const enabled=(row.lesson.id==='1-2'&&stage>=1)||(row.lesson.id==='2-2'&&stage>=2);
+     const enabled=isTowerUnlocked(row.lesson.id,stage);
      row.card.disabled=!enabled;row.card.classList.toggle('is-locked',!enabled);
      row.card.setAttribute('aria-label',enabled?row.lesson.title:row.lesson.title+'，尚未解鎖');
      row.status.textContent=row.lesson.format+(enabled?' · 已開放':' · 🔒 未開放');
    }
-   directoryDesc.textContent=stage===0?
-     '先和中央主島的導覽小人完成行前閱讀與兩題檢核，解鎖不炫耀島。':
-     stage===1?'不炫耀島已升起，目前僅開放 1-2 認知塔；完成遊戲並輸入密碼可解鎖 2-2。':
-     '不炫耀島的 1-2 與 2-2 已開放。第三塔和其餘分島會在後續版本加入。';
-   if(!unlockedTopic(mode))goOverview(true);
+   const explanations=[
+     '先和導覽小人完成行前閱讀與兩題檢核，喚醒不炫耀島。',
+     '不炫耀島已升起。完成 1-2 認知塔的遊戲並輸入密碼，解鎖 2-2。',
+     '2-2 情意塔已開放。完成徽章提示語活動並輸入密碼，解鎖 3-2。',
+     '3-2 技能塔已開放。取得成功通關密碼，即可喚醒不染色島。',
+     '不炫耀島三塔通關！不染色島與 1-1 認知塔已開放。'
+   ];
+   directoryDesc.textContent=explanations[Math.min(stage,4)];
+   if(mode!=='overview'&&!unlockedTopic(mode))goOverview(true);
  }
  function update(dt,elapsed){
-   if(risingIsland){
-     const root=islands['不炫耀'];
+   for(const topic of [...risingIslands]){
+     const root=islands[topic];
      root.position.y=THREE.MathUtils.damp(root.position.y,0,1.45,dt);
-     if(Math.abs(root.position.y)<.025){root.position.y=0;risingIsland=false}
+     if(Math.abs(root.position.y)<.025){
+       root.position.y=0;risingIslands.delete(topic);
+     }
    }
    for(const id of [...risingTowers]){
      const tower=animated.find(item=>item.lesson.id===id);
