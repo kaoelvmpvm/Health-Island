@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js';
 
 // Health Island v0.1 — a procedural, content-free environment study.
 // Everything visible in this prototype is generated from Three.js geometry.
@@ -286,6 +287,10 @@ function creekDistance(x,z){
   return d;
 }
 function validVegetation(x,z,margin=0) {
+  // Reserve clear walking and interaction space around the nine learning stations.
+  for(const point of Object.values(LEARNING_LOCATIONS)){
+    if(Math.hypot(x-point.x,z-point.z)<1.15+margin)return false;
+  }
   if(Math.hypot(x,z)>7.55-margin) return false;
   if(Math.hypot(x+3.12,(z-.35)/.79)<2.05+margin) return false;
   if(creekDistance(x,z)<.74+margin) return false;
@@ -306,6 +311,7 @@ for(let i=0,tries=0;i<78 && tries<600;tries++){
   const a=between(0,TAU),r=Math.sqrt(random())*8.08;
   const x=r*Math.cos(a),z=r*Math.sin(a);
   if(Math.hypot(x+3.12,(z-.35)/.79)<1.72 || creekDistance(x,z)<.56)continue;
+  if(Object.values(LEARNING_LOCATIONS).some(p=>Math.hypot(x-p.x,z-p.z)<1.04))continue;
   const s=between(.12,.39);
   const mesh=createMesh(new THREE.DodecahedronGeometry(1,0),mat(choice(stoneColors)),island,x,.59+s*.31,z);
   mesh.scale.set(s*between(.9,1.7),s*between(.48,.9),s*between(.8,1.45));
@@ -446,6 +452,16 @@ dayBtn.addEventListener('click',()=>{
   dayText.textContent=nighttime?'切換日景':'切換夜景';
 });
 resetBtn.addEventListener('click',resetView);
+
+// Independent module: 3 youth-themed districts × 3 learning dimensions.
+let learningWorld=null;
+setupLearningIsland({island,camera,renderer,controls})
+  .then(world=>{learningWorld=world})
+  .catch(err=>{
+    console.error('Learning island initialization failed',err);
+    errorBox.textContent='島嶼已載入，但青春教材入口暫時無法開啟。請重新整理頁面或檢查 data/lessons.json 是否已發布。';
+    errorBox.hidden=false;
+  });
 renderer.domElement.addEventListener('pointerdown',()=>{isDragging=true});
 window.addEventListener('pointerup',()=>{isDragging=false});
 function resize(){
@@ -494,6 +510,7 @@ function animate(){
     glowMats[i].opacity=nightMix*(.45+.4*(.5+.5*Math.sin(elapsed*2.4+f.userData.phase)));
   });
   waterfall.material.opacity=.68+.075*Math.sin(elapsed*2.8);
+  if(learningWorld)learningWorld.update(dt,elapsed);
   renderer.render(scene,camera);
 }
 animate();
