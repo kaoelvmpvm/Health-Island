@@ -1,0 +1,82 @@
+/* Health Island v0.4 — central curriculum treasure vault */
+.central-vault-marker{
+ --gold:#b98a35;position:absolute;z-index:7;
+ transform:translate(-50%,-112%);
+ display:flex;align-items:center;gap:9px;
+ padding:7px 13px 7px 8px;
+ border:1px solid #f7e6bd;border-radius:999px;
+ background:rgba(255,253,245,.94);backdrop-filter:blur(17px);
+ box-shadow:0 10px 30px rgba(99,72,29,.23);
+ color:#74531f;white-space:nowrap;cursor:pointer;
+ font-family:inherit;font-size:12px;text-align:left;line-height:1.25;
+}
+.central-vault-marker:hover{background:#fff8dd;box-shadow:0 13px 34px rgba(92,61,17,.28)}
+.central-vault-marker:focus-visible,.central-vault-confirm:focus-visible,.central-vault-close:focus-visible{
+ outline:3px solid #e9b54b;outline-offset:3px;
+}
+.central-vault-marker.hidden{display:none}
+.vault-marker-emblem{
+ display:grid;place-items:center;width:31px;height:31px;
+ background:linear-gradient(145deg,#f3cf74,#a97626);
+ border-radius:50%;color:#fff6d8;font-size:22px;
+ text-shadow:0 1px 3px #775326;
+}
+.vault-marker-words{display:flex;flex-direction:column;gap:3px}
+.vault-marker-words strong{font-size:12px;font-weight:900}
+.vault-marker-words small{font-size:9px;font-weight:700;color:#957d4c}
+.central-vault-overlay{
+ position:absolute;z-index:25;inset:0;
+ display:grid;place-items:center;
+ padding:18px;background:rgba(14,37,46,.48);
+ backdrop-filter:blur(10px);
+}
+.central-vault-overlay[hidden]{display:none!important}
+.central-vault-dialog{
+ width:min(420px,100%);position:relative;overflow:hidden;
+ padding:32px 31px 27px;border:1px solid rgba(255,239,198,.85);
+ border-radius:27px;background:linear-gradient(155deg,#fffdf6,#fff7e7);
+ box-shadow:0 24px 75px #112f4152;color:#3d4950;text-align:center;
+}
+.central-vault-dialog:before{
+ content:"";pointer-events:none;position:absolute;left:-45px;top:-50px;
+ width:150px;height:150px;border-radius:50%;background:#f3d89d55;filter:blur(25px)
+}
+.central-vault-close{
+ position:absolute;right:16px;top:16px;width:34px;height:34px;
+ border:0;border-radius:50%;background:#f4eacf;color:#80663c;
+ font:500 22px/1 inherit;cursor:pointer;
+}
+.central-vault-crest{
+ display:grid;place-items:center;width:79px;height:79px;margin:6px auto 20px;
+ border-radius:24px;background:linear-gradient(135deg,#ffebac,#c99540);
+ box-shadow:0 12px 32px #d7a44a55;color:#fff9e2;
+ text-shadow:0 3px 6px #8e6028;font-size:53px;
+}
+.central-vault-kicker{
+ color:#b18138;font-size:10px;letter-spacing:.19em;font-weight:850;
+}
+.central-vault-dialog h2{font-size:32px;letter-spacing:.07em;margin:11px 0 13px;color:#4d493c}
+.central-vault-dialog p{font-size:14px;line-height:1.95;color:#6b716f;margin:0 auto 20px;max-width:330px}
+.central-vault-status{
+ border:1px solid #f1ddb5;border-radius:12px;background:#fff5df;
+ color:#89642c;font-size:12px;font-weight:800;padding:12px;margin-bottom:21px;
+}
+.central-vault-confirm{
+ width:100%;border:0;border-radius:14px;
+ padding:14px;background:#286e69;color:#fff;
+ font-family:inherit;font-size:14px;font-weight:850;cursor:pointer;
+}
+.central-vault-confirm:hover{background:#195e59}
+.night .central-vault-marker{
+ background:rgba(55,51,44,.88);color:#ffe9af;border-color:#ad8b4b;
+}
+.night .vault-marker-words small{color:#d4bd92}
+@media(max-width:680px){
+ .central-vault-marker{gap:5px;padding:5px 7px 5px 5px}
+ .vault-marker-emblem{width:29px;height:29px;font-size:19px}
+ .vault-marker-words strong{font-size:10px}
+ .vault-marker-words small{font-size:8px}
+ .central-vault-dialog{padding:25px 23px 22px;border-radius:20px}
+ .central-vault-dialog h2{font-size:26px}
+ .central-vault-dialog p{font-size:13px}
+}
