@@ -121,3 +121,17 @@
  .guide-reading-item p{font-size:11px}
  .quest-banner{bottom:209px;font-size:11px;padding:10px 12px}
 }
+
+/* v0.6 — step status after each unlocked learning tower */
+.guide-quest-row.current{
+  background:#fff8e9;color:#916726;
+  border-left:4px solid #e9ba69;padding-left:10px;
+}
+.guide-row-state{
+  float:right;margin-left:8px;font-size:10px;font-weight:900;
+  opacity:.75;
+}
+@media(max-width:380px){
+  .guide-row-state{font-size:9px}
+  .guide-quest-row{font-size:11px}
+}
