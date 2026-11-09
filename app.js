@@ -462,7 +462,7 @@ setupLearningIsland({scene,camera,renderer,controls})
   .then(world=>{learningWorld=world})
   .catch(err=>{
     console.error('Learning island initialization failed',err);
-    errorBox.textContent='島嶼已載入，但青春教材入口暫時無法開啟。請重新整理頁面或檢查 data/lessons.json 是否已發布。';
+    errorBox.textContent='教材入口初始化失敗：'+(err?.message || String(err))+'。請重新整理頁面；若持續發生，請回報這段錯誤訊息。';
     errorBox.hidden=false;
   });
 renderer.domElement.addEventListener('pointerdown',()=>{isDragging=true});
