@@ -181,7 +181,7 @@ export function createGuide({island,camera,renderer}){
        // Reveal the world before showing another dialogue so the rise can be seen.
        setStage(1);close();
        navigation?.goOverview?.();
-       setTimeout(()=>{if(overlay.hidden && stage===1)open('raised')},3800);
+       // Players can inspect the rising island without an unexpected modal.
      });
    }else if(view==='raised'){
      content.innerHTML='<div class="guide-success-icon">✦</div>'+
@@ -207,7 +207,7 @@ export function createGuide({island,camera,renderer}){
        // The new tower has a rising animation; don't cover it with the dialog.
        setStage(2);close();
        navigation?.goTo?.('不炫耀');
-       setTimeout(()=>{if(overlay.hidden && stage===2)open('unlocked')},2600);
+       // Keep the newly raised second tower unobstructed.
      });
    }else if(view==='unlocked'){
      content.innerHTML='<div class="guide-success-icon">✧</div>'+
