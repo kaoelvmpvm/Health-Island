@@ -14,7 +14,7 @@
 .quest-shortcut{
  position:absolute;right:clamp(26px,4vw,66px);top:153px;z-index:10;
  border:1px solid #bde3d7;border-radius:13px;padding:11px 13px;
- font:800 12px/1.2 inherit;font-family:inherit;background:#eafff4ed;
+ font-size:12px;font-weight:800;line-height:1.2;font-family:inherit;background:#eafff4ed;
  color:#226d5f;cursor:pointer;backdrop-filter:blur(18px);
  box-shadow:0 8px 23px rgba(14,76,62,.1);
 }
