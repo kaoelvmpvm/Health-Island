@@ -186,8 +186,8 @@ function hill(x,z,rx,ry,rz,shade){
   mesh.scale.set(rx,ry,rz);
   return mesh;
 }
-hill(3.0,-3.2,2.5,.84,2.7,0x7bbf93);
-hill(4.5,-2.35,1.35,.58,1.8,0x8ccc98);
+hill(4.4,-4.1,1.65,.72,1.95,0x7bbf93);
+hill(5.55,-2.35,1.05,.50,1.45,0x8ccc98);
 hill(-5.3,-3.3,1.6,.5,1.45,0x87c896);
 hill(-4.7,3.9,1.75,.43,1.55,0x8cca98);
 
@@ -289,7 +289,7 @@ function creekDistance(x,z){
 }
 function validVegetation(x,z,margin=0) {
   // Keep the central curriculum vault's platform, entrance and stairs clear.
-  if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.1+margin)return false;
+  if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.83+margin)return false;
   // Reserve clear walking and interaction space around the nine learning stations.
   for(const point of Object.values(LEARNING_LOCATIONS)){
     if(Math.hypot(x-point.x,z-point.z)<1.15+margin)return false;
@@ -315,7 +315,7 @@ for(let i=0,tries=0;i<78 && tries<600;tries++){
   const x=r*Math.cos(a),z=r*Math.sin(a);
   if(Math.hypot(x+3.12,(z-.35)/.79)<1.72 || creekDistance(x,z)<.56)continue;
   if(Object.values(LEARNING_LOCATIONS).some(p=>Math.hypot(x-p.x,z-p.z)<1.04))continue;
-  if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.05)continue;
+  if(Math.hypot(x-VAULT_LOCATION.x,z-VAULT_LOCATION.z)<2.76)continue;
   const s=between(.12,.39);
   const mesh=createMesh(new THREE.DodecahedronGeometry(1,0),mat(choice(stoneColors)),island,x,.59+s*.31,z);
   mesh.scale.set(s*between(.9,1.7),s*between(.48,.9),s*between(.8,1.45));
