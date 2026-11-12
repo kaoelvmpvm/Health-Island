@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createVaultLibrary } from './vault-learning.js?v=0.7.0';
+import { createVaultLibrary } from './vault-learning.js?v=0.8.0';
 
 // Central Health Island: the curriculum treasure vault contains a nine-page reader,
 // Padlet sharing board, and the existing quest pathway without extra islands.
