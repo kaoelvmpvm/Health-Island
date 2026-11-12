@@ -69,7 +69,7 @@ const READING=[
  {title:'讓島嶼與塔樓甦醒',body:'完成行前檢核，第一座不炫耀島就會升起。完成每座塔的原始教材、找到通關密碼，再返回導覽員輸入，才能逐步解鎖下一座塔與新的主題島。'}
 ];
 const STAGE_HINTS=[
- '歡迎來到健康島！請先閱讀序章並完成兩題檢核，喚醒不炫耀島。',
+ '歡迎來到健康島！先到中央教材寶庫閱讀《不需炫耀、不是比較》，再完成導覽員的兩題行前檢核，喚醒不炫耀島。',
  '不炫耀島已經升起。先挑戰 1-2「青春補給」，完成遊戲取得青春密碼，再回來輸入。',
  '你已解鎖 2-2「青春心語 Yes」。完成徽章提示語的製作流程，取得通關密碼後，就能喚醒技能塔。',
  '你已解鎖 3-2「青春練功」。請嘗試不同的故事路徑，只有成功通關才會顯示最後的青春密碼。',
@@ -181,7 +181,7 @@ export function createGuide({island,camera,renderer}){
      questRow('不染色島 · 1-1 認知塔',4,5,stage)
    ].join('');
    let buttons='';
-   if(stage===0)buttons=action('閱讀行前教材','reading');
+   if(stage===0)buttons=action('進入教材寶庫','vault')+action('完成閱讀，開始檢核','quiz','secondary');
    if(stage===1)buttons=action('前往 1-2 認知塔','lesson12')+action('輸入 1-2 青春密碼','password','secondary');
    if(stage===2)buttons=action('前往 2-2 情意塔','lesson22')+action('輸入 2-2 通關密碼','password','secondary');
    if(stage===3)buttons=action('前往 3-2 技能塔','lesson32')+action('輸入 3-2 成功密碼','password','secondary');
@@ -202,10 +202,10 @@ export function createGuide({island,camera,renderer}){
    dialog.appendChild(header);
    const content=dom('div',{className:'guide-body'});dialog.appendChild(content);
    if(view==='reading'){
-     content.innerHTML='<div class="guide-step">序章 / 行前閱讀（流程示範）</div>'+
-       '<p class="guide-p">這是測試闖關流程的暫定教材，正式教材區尚未連結。</p>'+
+     content.innerHTML='<div class="guide-step">序章 / 教材閱讀導覽</div>'+
+       '<p class="guide-p">正式的九頁《不需炫耀、不是比較》已放在中央教材寶庫。下方為重點提示；請先打開寶庫閱讀，再進行兩題行前檢核。</p>'+
        READING.map((item,i)=>'<article class="guide-reading-item"><span>0'+(i+1)+'</span><div><h3>'+item.title+'</h3><p>'+item.body+'</p></div></article>').join('')+
-       '<div class="guide-actions">'+action('我已閱讀，開始檢核','quiz')+action('返回導覽','home','quiet')+'</div>';
+       '<div class="guide-actions">'+action('前往中央教材寶庫','vault')+action('我已閱讀，開始檢核','quiz','secondary')+action('返回導覽','home','quiet')+'</div>';
    }else if(view==='quiz'){
      content.innerHTML='<div class="guide-step">行前檢核 / 2 題</div>'+
        '<p class="guide-p">請回答兩個問題，全部答對後喚醒第一座主題島。</p>'+
@@ -254,6 +254,10 @@ export function createGuide({island,camera,renderer}){
      if(a==='home'){view='home';render()}
      else if(a==='reading'||a==='quiz'||a==='password'){view=a;render()}
      else if(a==='close')close();
+     else if(a==='vault'){
+       close();
+       document.getElementById('centralVaultMarker')?.click();
+     }
      else if(a==='reset'){
        if(!window.confirm('確定重設這個瀏覽器的健康島闖關紀錄，讓所有主題島重新沉入海面嗎？'))return;
        setStage(0);navigation?.goOverview?.();view='home';render();
