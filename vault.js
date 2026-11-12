@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { createVaultLibrary } from './vault-learning.js?v=0.7.0';
 
-// Central Health Island: a reserved landmark for a FUTURE curriculum area.
-// There is deliberately no href, route, external website, or lesson binding.
+// Central Health Island: the curriculum treasure vault contains a nine-page reader,
+// Padlet sharing board, and the existing quest pathway without extra islands.
 export const VAULT_LOCATION = Object.freeze({x:0,z:-2.75});
 
 const stone=new THREE.MeshStandardMaterial({color:0xe9e0cf,roughness:.83,flatShading:true});
@@ -36,7 +37,7 @@ function placard(label){
 }
 function buildStructure(island){
   const root=new THREE.Group();
-  root.name='中央教材寶庫：預留入口';
+  root.name='中央教材寶庫：不炫耀學習基地';
   root.position.set(VAULT_LOCATION.x,.61,VAULT_LOCATION.z);
   island.add(root);
   // The base and forward steps are set above the grass, never below the water.
@@ -105,11 +106,11 @@ function makeInterface(){
   const app=document.getElementById('app');
   const mark=document.createElement('button');
   mark.id='centralVaultMarker';mark.type='button';mark.className='central-vault-marker';
-  mark.setAttribute('aria-label','查看中央教材寶庫，教材區入口尚未設定');
+  mark.setAttribute('aria-label','開啟不炫耀學習基地，閱讀九頁教材與 Padlet');
   const emblem=document.createElement('span');emblem.className='vault-marker-emblem';emblem.textContent='◆';
   const words=document.createElement('span');words.className='vault-marker-words';
   const label=document.createElement('strong');label.textContent='教材寶庫';
-  const sub=document.createElement('small');sub.textContent='中央主島 · 入口預留';
+  const sub=document.createElement('small');sub.textContent='中央主島 · 九頁教材與 Padlet';
   words.append(label,sub);mark.append(emblem,words);
   app.appendChild(mark);
 
@@ -117,7 +118,7 @@ function makeInterface(){
   overlay.id='centralVaultOverlay';overlay.className='central-vault-overlay';overlay.hidden=true;
   overlay.setAttribute('role','presentation');
   const dialog=document.createElement('section');
-  dialog.className='central-vault-dialog';dialog.setAttribute('role','dialog');
+  dialog.className='central-vault-dialog vault-expanded';dialog.setAttribute('role','dialog');
   dialog.setAttribute('aria-modal','true');
   dialog.setAttribute('aria-labelledby','centralVaultHeading');
   const dismiss=document.createElement('button');
@@ -127,12 +128,10 @@ function makeInterface(){
   const kicker=document.createElement('div');kicker.className='central-vault-kicker';
   kicker.textContent='HEALTH ISLAND · CENTRAL VAULT';
   const title=document.createElement('h2');title.id='centralVaultHeading';title.textContent='教材寶庫';
-  const desc=document.createElement('p');desc.textContent='未來將由這座寶庫進入「教材區」。目前只完成入口建築，尚未設定連結。';
-  const status=document.createElement('div');status.className='central-vault-status';
-  status.textContent='◇ 教材區入口 · 預留中';
-  const closeBtn=document.createElement('button');closeBtn.className='central-vault-confirm';
-  closeBtn.type='button';closeBtn.textContent='返回健康島';
-  dialog.append(dismiss,crest,kicker,title,desc,status,closeBtn);overlay.appendChild(dialog);app.appendChild(overlay);
+  const closeBtn=document.createElement('button');closeBtn.className='central-vault-confirm';closeBtn.type='button';closeBtn.textContent='返回健康島';
+  dialog.append(dismiss,crest,kicker,title);
+  createVaultLibrary(dialog,{onClose:()=>dismiss.click()});
+  overlay.appendChild(dialog);app.appendChild(overlay);
   return {mark,overlay,dismiss,closeBtn};
 }
 export function createTreasureVault({island,camera,renderer}){
