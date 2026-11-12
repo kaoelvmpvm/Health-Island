@@ -444,8 +444,8 @@ function resetView(){
 }
 resetView();
 
-// The central main island now carries a future curriculum-area landmark.
-// No navigation target is registered until the curriculum area exists.
+// The central main island now opens the nine-page lesson-reader and Padlet hub.
+// The original four-island unlock progression remains unchanged.
 const centralVault=createTreasureVault({island,camera,renderer});
 const guide=createGuide({island,camera,renderer});
 
