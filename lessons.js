@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {isIslandUnlocked,isTowerUnlocked} from './quest-rules.js?v=0.9.0';
+import {isIslandUnlocked,isTowerUnlocked} from './quest-rules.js?v=1.1.3';
 import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js?v=1.0.0';
 
 // Each station lives on its own floating island; coordinates are world-space.
@@ -190,38 +190,35 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  unlockInput.setAttribute('maxlength','8');
  unlockInput.setAttribute('placeholder','遊戲結束畫面中的密碼');
  unlockInput.required=true;unlockLabel.setAttribute('for','lessonUnlockCode');
- const unlockSubmit=append(unlockForm,'button',{type:'submit',className:'viewer-unlock-submit'},'驗證並解鎖');
+ append(unlockForm,'button',{type:'submit',className:'viewer-unlock-submit'},'驗證並解鎖');
  const unlockFeedback=append(unlockBox,'p',{className:'viewer-unlock-feedback',role:'status','aria-live':'polite'});
- const nextTower=append(unlockBox,'button',{type:'button',className:'viewer-unlock-next',hidden:true},'前往下一座教材塔 →');
- let currentViewerId=null,nextUnlockedId=null;
- const followingTower={'1-2':'2-2','2-2':'3-2','1-1':'2-1'};
+ let currentViewerId=null;
  function prepareUnlock(id){
-   currentViewerId=id;nextUnlockedId=null;
-   unlockInput.value='';unlockInput.disabled=false;unlockSubmit.disabled=false;
-   unlockFeedback.textContent='';unlockFeedback.className='viewer-unlock-feedback';nextTower.hidden=true;
+   currentViewerId=id;
+   unlockInput.value='';
+   unlockFeedback.textContent='';unlockFeedback.className='viewer-unlock-feedback';
    const gate=quest?.getUnlockChallenge?.(id);
    unlockBox.hidden=!gate;
    if(gate){
      unlockTitle.textContent='🔐 '+id+' 通關密碼驗證';
      unlockLabel.textContent=gate.codeLabel;
      unlockHelp.textContent='完成遊戲取得密碼後，直接在下方輸入即可解鎖'+gate.nextDescription+'，不必返回導覽小人。'+
-        (id==='3-2'?'驗證成功後，會自動回到地圖並聚焦不染色島。':'');
+       (gate.revealIsland
+         ? '驗證成功後，會自動回到地圖，看新島升起並聚焦 '+gate.nextLessonId+' 教材塔。'
+         : '驗證成功後，會自動回到地圖並聚焦升起的 '+gate.nextLessonId+' 教材塔。');
    }
  }
  unlockForm.addEventListener('submit',e=>{
    e.preventDefault();
    if(!currentViewerId||unlockBox.hidden)return;
    const result=quest?.submitLessonCode?.(currentViewerId,unlockInput.value);
+   if(result?.ok){
+     showUnlockedTower(result);
+     return;
+   }
    unlockFeedback.textContent=result?.message||'目前無法驗證，請稍後重試。';
-   unlockFeedback.className='viewer-unlock-feedback '+(result?.ok?'success':'error');
-   if(!result?.ok){unlockInput.focus();return;}
-    if(currentViewerId==='3-2'){
-      showIslandUnlock('不染色');
-      return;
-    }
-   unlockInput.disabled=true;unlockSubmit.disabled=true;
-   nextUnlockedId=followingTower[currentViewerId]||null;
-   nextTower.hidden=!nextUnlockedId;
+   unlockFeedback.className='viewer-unlock-feedback error';
+   unlockInput.focus();
  });
 
  const markers=new Map();
@@ -257,7 +254,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      card.addEventListener('click',()=>{backdrop.hidden=true;select(l.id)});
    });
  }
- let selected=null,mode='overview',flight=null;
+ let mode='overview',flight=null,revealFocus=null;
  const isMobile=()=>window.innerWidth<=680;
  const overviewPosition=()=>new THREE.Vector3(isMobile()?47:40,isMobile()?69:47,isMobile()?103:75);
  const focusedOffset=()=>new THREE.Vector3(isMobile()?12:9,isMobile()?20:13,isMobile()?22:19);
@@ -266,19 +263,25 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    const b=document.getElementById('spinBtn');
    b.classList.remove('active');b.setAttribute('aria-pressed','false');
  }
- function moveTo(topic,instant=false,reveal=false){
+ function moveTo(topic,{instant=false,towerId=null,revealIsland=false}={}){
    if(topic&&!unlockedTopic(topic)){quest?.open?.();return}
    mode=topic;
+   revealFocus=null;
    stopSpin();
-   const origin=topic?TOPIC_ISLANDS[topic]:{x:0,z:0};
-   const target=new THREE.Vector3(origin.x,.38,origin.z);
-   const destination=topic?target.clone().add(focusedOffset()):overviewPosition();
-   flight={
-     fromPos:camera.position.clone(),fromTarget:controls.target.clone(),
-     toPos:destination,toTarget:target,t:0,duration:reveal?1.45:.95,
-      revealTopic:reveal?topic:null
-   };
-   if(instant){camera.position.copy(destination);controls.target.copy(target);controls.update();flight=null}
+   const origin=towerId?LEARNING_LOCATIONS[towerId]:topic?TOPIC_ISLANDS[topic]:{x:0,z:0};
+   const target=new THREE.Vector3(origin.x,towerId?1.05:.38,origin.z);
+   const offset=focusedOffset();
+   if(towerId&&!revealIsland)offset.multiplyScalar(.68);
+   const destination=topic?target.clone().add(offset):overviewPosition();
+   if(instant){
+     camera.position.copy(destination);controls.target.copy(target);controls.update();flight=null;
+   }else{
+     flight={
+       fromPos:camera.position.clone(),fromTarget:controls.target.clone(),
+       toPos:destination,toTarget:target,t:0,duration:revealIsland?1.45:towerId?1.2:.95,
+       towerId,revealTopic:revealIsland?topic:null
+     };
+   }
    overviewBtn.classList.toggle('active',!topic);overviewBtn.setAttribute('aria-pressed',String(!topic));
    islandBtns.forEach((b,t)=>{
      b.classList.toggle('active',t===topic);
@@ -292,13 +295,13 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  }
  function goOverview(instant=false){
    closePanel();
-   moveTo(null,instant);
+   moveTo(null,{instant});
  }
  function select(id){
    const l=byId[id];if(!l)return;
    if(!unlockedLesson(id)){quest?.open?.();return}
    if(mode!==l.topic)moveTo(l.topic);
-   selected=l;stopSpin();backdrop.hidden=true;
+   revealFocus=null;stopSpin();backdrop.hidden=true;
    const t=TOPICS[l.topic],d=DIMS[l.dimension];
    panelContent.replaceChildren();
    append(panelContent,'span',{className:'learn-kicker'},'HEALTH ISLAND / STATION '+l.id);
@@ -321,29 +324,28 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    panel.hidden=false;scrim.hidden=false;
    markers.forEach((b,key)=>b.classList.toggle('selected',key===id));
  }
- function closePanel(){panel.hidden=true;scrim.hidden=true;selected=null;markers.forEach(b=>b.classList.remove('selected'))}
+ function closePanel(){panel.hidden=true;scrim.hidden=true;revealFocus=null;markers.forEach(b=>b.classList.remove('selected'))}
  function closeDirectory(){backdrop.hidden=true;openDirectory.focus()}
  function closeViewer({restoreFocus=true}={}){
    viewer.hidden=true;
    iframe.src='about:blank';
    currentViewerId=null;
-   nextUnlockedId=null;
    if(restoreFocus)panelContent.querySelector('.learn-button.primary')?.focus();
  }
- function showIslandUnlock(topic){
-   if(!unlockedTopic(topic))return;
+ function showUnlockedTower({nextLessonId,revealIsland}){
+   const lesson=byId[nextLessonId];
+   if(!lesson||!unlockedLesson(nextLessonId))return;
    if(!viewer.hidden)closeViewer({restoreFocus:false});
    closePanel();
    backdrop.hidden=true;
-   const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-   moveTo(topic,reduceMotion,true);
-   islandBtns.get(topic)?.focus({preventScroll:true});
+   const instant=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+   moveTo(lesson.topic,{instant,towerId:nextLessonId,revealIsland});
+   const fallback=islandBtns.get(lesson.topic);
+   fallback.focus({preventScroll:true});
+   const marker=markers.get(nextLessonId);
+   marker.classList.add('selected');
+   revealFocus={marker,fallback};
  }
- nextTower.addEventListener('click',()=>{
-   if(!nextUnlockedId)return;
-   const next=nextUnlockedId;
-   closeViewer();closePanel();select(next);
- });
  openDirectory.addEventListener('click',()=>{closePanel();backdrop.hidden=false;dirClose.focus()});
  overviewBtn.addEventListener('click',()=>goOverview());
  islandBtns.forEach((b,topic)=>b.addEventListener('click',()=>visit(topic)));
@@ -442,10 +444,10 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    if(mode!=='overview'&&!unlockedTopic(mode))goOverview(true);
  }
  function update(dt,elapsed){
-    // Let the camera bring the new island into view before it starts to rise.
-    const pendingReveal=flight?.t<.24?flight.revealTopic:null;
+   // Bring the next tower into view before beginning the rise.
+   const pendingReveal=flight?.t<.24?flight:null;
    for(const topic of [...risingIslands]){
-     if(topic===pendingReveal)continue;
+     if(topic===pendingReveal?.revealTopic)continue;
      const root=islands[topic];
      root.position.y=THREE.MathUtils.damp(root.position.y,0,1.45,dt);
      if(Math.abs(root.position.y)<.025){
@@ -455,7 +457,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    for(const id of [...risingTowers]){
      const tower=animated.find(item=>item.lesson.id===id);
      if(!tower){risingTowers.delete(id);continue}
-     if(tower.lesson.topic===pendingReveal)continue;
+     if(id===pendingReveal?.towerId)continue;
      tower.root.position.y=THREE.MathUtils.damp(tower.root.position.y,groundY,2,dt);
      if(Math.abs(tower.root.position.y-groundY)<.025){
        tower.root.position.y=groundY;risingTowers.delete(id);
@@ -487,8 +489,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      a.beacon.position.y=2.38+.09*Math.sin(elapsed*1.8);
      a.halo.position.y=a.beacon.position.y;
      a.halo.rotation.z+=dt*.5;
-     a.halo.material.opacity=(selected?.id===a.lesson.id) ? .95 : .52+.17*Math.sin(elapsed*1.5);
      const b=markers.get(a.lesson.id);
+     a.halo.material.opacity=b.classList.contains('selected') ? .95 : .52+.17*Math.sin(elapsed*1.5);
      if(mode!==a.lesson.topic||!unlockedLesson(a.lesson.id)){b.classList.add('hidden');continue;}
      v.set(a.spot.x,3.05+islands[a.lesson.topic].position.y+a.root.position.y-groundY,a.spot.z);
      if(v.clone().sub(camera.position).dot(forward)<0){b.classList.add('hidden');continue}
@@ -498,9 +500,17 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      if(x<24||x>canvas.clientWidth-24||y<80||y>canvas.clientHeight-68||v.z>1)b.classList.add('hidden');
      else{b.classList.remove('hidden');b.style.left=x+'px';b.style.top=y+'px'}
    }
+   if(!flight&&revealFocus){
+     const {marker,fallback}=revealFocus;
+     if(document.activeElement!==fallback)revealFocus=null;
+     else if(!marker.classList.contains('hidden')){
+       marker.focus({preventScroll:true});
+       revealFocus=null;
+     }
+   }
  }
  if(quest){
-   quest.setNavigator({goTo:visit,goOverview,openLesson:select,showIslandUnlock});
+   quest.setNavigator({goTo:visit,goOverview,openLesson:select,showUnlockedTower});
    quest.onChange(syncQuest);
  }else{
    syncQuest(0,0);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MAX_STAGE,PASSCODE_GATES,verifyActivityCode} from './quest-rules.js?v=0.9.0';
+import {MAX_STAGE,PASSCODE_GATES,verifyActivityCode} from './quest-rules.js?v=1.1.3';
 
 // Health Island quest prototype: all progress is local to this browser.
 // No user accounts, external gradebooks, or remote verification are implied.
@@ -153,19 +153,12 @@ export function createGuide({island,camera,renderer}){
    if(old?.isConnected && typeof old.focus==='function')old.focus();
    else shortcut.focus();
  }
- function nextAfterSuccess(previousStage){
-   // Close the dialog before moving the camera so users can observe the 3D rise.
-   close();
-   if(previousStage===0)navigation?.goOverview?.();
-   else if(previousStage===3)navigation?.showIslandUnlock?.('不染色');
-   else if(previousStage===4)navigation?.goTo?.('不染色');
-   else navigation?.goTo?.('不炫耀');
- }
  // Shared code verification for the inline lesson viewer and guide.
  function getUnlockChallenge(lessonId){
    const gate=PASSCODE_GATES[stage];
    if(!gate||gate.lessonId!==lessonId)return null;
-   return {lessonId,codeLabel:gate.codeLabel,nextDescription:gate.nextDescription};
+   return {lessonId,codeLabel:gate.codeLabel,nextDescription:gate.nextDescription,
+     nextLessonId:gate.nextLessonId,revealIsland:gate.revealIsland};
  }
  function submitLessonCode(lessonId,code){
    const gate=PASSCODE_GATES[stage];
@@ -178,7 +171,8 @@ export function createGuide({island,camera,renderer}){
    const previous=stage;
    setStage(gate.nextStage);
    return {ok:true,kind:'success',previousStage:previous,nextStage:stage,
-     nextDescription:gate.nextDescription,message:'驗證成功！已解鎖'+gate.nextDescription+'。'};
+     nextDescription:gate.nextDescription,nextLessonId:gate.nextLessonId,revealIsland:gate.revealIsland,
+     message:'驗證成功！已解鎖'+gate.nextDescription+'。'};
  }
  function applyCode(){
    const config=PASSCODE_GATES[stage];
@@ -186,14 +180,14 @@ export function createGuide({island,camera,renderer}){
    const field=dialog.querySelector('#questCode');
    const feedback=dialog.querySelector('#codeFeedback');
    const code=field?.value??'';
-   if(!verifyActivityCode(stage,code)){
-     feedback.textContent='密碼不正確。請先完成 '+config.lessonId+' 原始教材，從通關畫面取得正確密碼。';
+   const result=submitLessonCode(config.lessonId,code);
+   if(!result.ok){
+     feedback.textContent=result.message;
      field?.focus();
      return;
    }
-   const previous=stage;
-   setStage(config.nextStage);
-   nextAfterSuccess(previous);
+   close();
+   navigation?.showUnlockedTower?.(result);
  }
  function homeHTML(){
    const rows=[
@@ -256,9 +250,9 @@ export function createGuide({island,camera,renderer}){
        if(answers.get('q1')!=='1'||answers.get('q2')!=='2'){
          feedback.textContent='還有答案需要調整。可以重新閱讀，思考尊重界線和密碼解鎖的意義。';return;
        }
-       const previous=stage;
        setStage(1);
-       nextAfterSuccess(previous);
+       close();
+       navigation?.goOverview?.();
      });
    }else if(view==='password' && PASSCODE_GATES[stage]){
      const gate=PASSCODE_GATES[stage];

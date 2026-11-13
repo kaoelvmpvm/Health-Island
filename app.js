@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=1.1.2';
-import { createGuide, GUIDE_POSITION } from './guide.js?v=1.1.2';
+import { LEARNING_LOCATIONS, setupLearningIsland } from './lessons.js?v=1.1.3';
+import { createGuide, GUIDE_POSITION } from './guide.js?v=1.1.3';
 import { createTreasureVault, VAULT_LOCATION } from './vault.js?v=1.1.0';
 import {createKnowledgeIslands} from './knowledge-islands.js?v=1.1.0';
 import {createLabelLayout} from './label-layout.js?v=1.1.1';
