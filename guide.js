@@ -227,7 +227,7 @@ export function createGuide({island,camera,renderer}){
    const content=dom('div',{className:'guide-body'});dialog.appendChild(content);
    if(view==='reading'){
      content.innerHTML='<div class="guide-step">序章 / 教材閱讀導覽</div>'+
-       '<p class="guide-p">正式的九頁《不需炫耀、不是比較》已放在中央教材寶庫。下方為重點提示；請先打開寶庫閱讀，再進行兩題行前檢核。</p>'+
+       '<p class="guide-p">九頁完整 PDF 已放在「不炫耀知識寶庫」小島。下方為重點提示；請先到知識寶庫閱讀，再完成兩題行前檢核。</p>'+
        READING.map((item,i)=>'<article class="guide-reading-item"><span>0'+(i+1)+'</span><div><h3>'+item.title+'</h3><p>'+item.body+'</p></div></article>').join('')+
        '<div class="guide-actions">'+action('前往不炫耀知識寶庫','knowledgeBrag')+action('我已閱讀，開始檢核','quiz','secondary')+action('返回導覽','home','quiet')+'</div>';
    }else if(view==='quiz'){
