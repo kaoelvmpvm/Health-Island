@@ -305,7 +305,7 @@ export function createGuide({island,camera,renderer}){
      marker.classList.add('hidden');
    }else{
      marker.classList.remove('hidden');
-     marker.style.left=x+'px';marker.style.top=y+'px';
+     marker.style.left=(x+(canvas.clientWidth<680?38:70))+'px';marker.style.top=y+'px';
    }
  }
  shortcut.addEventListener('click',()=>open());
