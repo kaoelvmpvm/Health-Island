@@ -334,5 +334,15 @@ export function createGuide({island,camera,renderer}){
      setTimeout(()=>{if(overlay.hidden)open()},900);
    }
  }catch{}
- return {getStage,onChange,setNavigator,update,open,getUnlockChallenge,submitLessonCode};
+ // Only the Health Island gate state is reset. Individual external game records remain untouched.
+ function resetProgress(){
+   try{
+     localStorage.removeItem(KEY);
+     sessionStorage.removeItem('healthIslandGuideWelcomeV1');
+   }catch(err){
+     console.warn('Unable to clear local island progress',err);
+   }
+   stage=0;
+ }
+ return {getStage,onChange,setNavigator,update,open,getUnlockChallenge,submitLessonCode,resetProgress};
 }
