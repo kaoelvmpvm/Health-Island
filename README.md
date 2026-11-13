@@ -1,8 +1,14 @@
 # 健康島 Health Island
 
-## v1.0｜七島地圖 × 三座知識寶庫 × 完整 PDF
+## v1.1｜標籤自動避讓 × 高對比夜景 × 重製島嶼進度
 
-以 Three.js 建立 3D 青春教育世界。版面依照七個圓形島嶼草圖重新配置：
+以 Three.js 建立 3D 青春教育世界，沿用先前的七島地圖與三份完整 PDF。本次更新改善各島標籤、夜景可讀性與操作便利性：
+
+- `label-layout.js` 依照 3D 投影座標，自動調整島嶼、知識寶庫、導覽員與 Padlet 標籤，避開彼此與固定導覽區（不因相機旋轉而固定在單一位置）。
+- `interface-polish.css` 加強夜景所有標籤及標題文字對比，並縮小左側標題區、優化窄畫面與底部工具列。
+- 底部工具列新增「重製進度」。確認後只清除 `healthIslandQuestPrototypeV1` 的島嶼／塔樓解鎖階段與導覽歡迎標記，然後重整頁面。**不清除各個 GitHub Pages 互動教材自己保存的練習紀錄。**
+
+七島基本配置：
 
 - 三座主題大島：左上「不染色島」、右上「不炫耀島」、下方「不迷路島」，保留各自三座認知／情意／技能塔。
 - 中央小島：「導覽島／Padlet」，提供原有 Padlet 嵌入看板與闖關導覽。
@@ -34,7 +40,8 @@
 
 ### 核心程式
 
-- `app.js`：3D 主場景、中央導覽島縮放及七島初始化
+- `app.js`：3D 主場景、中央導覽島縮放、七島初始化及重製進度按鈕
+- `label-layout.js`、`interface-polish.css`：標示自動避讓、夜景文字對比及行動裝置排版
 - `satellites.js`：三座主題大島與橋梁
 - `knowledge-islands.js`、`knowledge-islands.css`：三座知識寶庫、小島標記及 PDF 閱讀器
 - `vault.js`、`vault-learning.js`、`vault.css`：中央 Padlet、導覽及彈出看板
