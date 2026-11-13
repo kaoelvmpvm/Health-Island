@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#d8f3ee" />
   <meta name="description" content="健康島 Health Island — 導覽島、三座主題島與三座 PDF 知識寶庫，共七座可探索的立體浮島。"/>
   <title>健康島 Health Island｜七島青春探索世界</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <link rel="stylesheet" href="./learning.css?v=1.0.1" />
-  <link rel="stylesheet" href="./vault.css?v=1.0.1" />
-  <link rel="stylesheet" href="./knowledge-islands.css?v=1.0.1" />
-  <link rel="stylesheet" href="./guide.css?v=0.6.0" />
+  <link rel="stylesheet" href="./styles.css?v=1.1.0" />
+  <link rel="stylesheet" href="./learning.css?v=1.1.0" />
+  <link rel="stylesheet" href="./vault.css?v=1.1.0" />
+  <link rel="stylesheet" href="./knowledge-islands.css?v=1.1.0" />
+  <link rel="stylesheet" href="./guide.css?v=1.1.0" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <script type="importmap">
   {
@@ -68,12 +68,16 @@
       <button id="resetBtn" class="tool" type="button" title="還原初始視角">
         <span class="tool-icon">⌖</span><span class="tool-text">重設視角</span>
       </button>
+      <span class="tool-divider"></span>
+      <button id="resetProgressBtn" class="tool tool-reset-progress" type="button" title="清除健康島的解鎖進度並從頭開始" aria-label="重製島嶼進度">
+        <span class="tool-icon">↺</span><span class="tool-text">重製進度</span>
+      </button>
     </nav>
 
     <div class="hint"><span class="hint-symbol">↔</span><span>拖曳旋轉</span><i></i><span>點擊島名探索</span></div>
-    <div class="edition">HEALTH ISLAND <span>—</span> INTERACTIVE QUEST PROTOTYPE v1.0</div>
+    <div class="edition">HEALTH ISLAND <span>—</span> INTERACTIVE QUEST PROTOTYPE v1.1</div>
     <div id="error" class="error" hidden role="alert"></div>
   </main>
-  <script type="module" src="./app.js?v=1.0.1"></script>
+  <script type="module" src="./app.js?v=1.1.0"></script>
 </body>
 </html>
