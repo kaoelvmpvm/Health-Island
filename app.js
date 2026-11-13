@@ -448,7 +448,7 @@ function resetView(){
 }
 resetView();
 
-// The central main island now opens the nine-page lesson-reader and Padlet hub.
+// The central guide island opens Padlet; three separate knowledge islands hold original PDFs.
 // The original four-island unlock progression remains unchanged.
 const centralVault=createTreasureVault({island,camera,renderer});
 const knowledgeIslands=createKnowledgeIslands({scene,camera,renderer});
