@@ -84,3 +84,45 @@
  background:#f4f9f8;border-color:transparent
 }
 .night .island-switch:disabled{color:#9badae!important}
+
+/* v0.9 · 原教材 iframe 下方直接驗證通關密碼 */
+.learn-viewer iframe{min-height:0;}
+.viewer-unlock[hidden],.viewer-unlock-next[hidden]{display:none!important;}
+.viewer-unlock{
+  flex:0 0 auto;padding:12px 18px 14px;
+  background:linear-gradient(135deg,#fffaf0,#edf9f5);
+  border-top:2px solid #8bbdb1;
+  box-shadow:0 -5px 18px rgba(17,80,76,.07);
+  max-height:min(34vh,250px);overflow:auto;color:#264d49;
+}
+.viewer-unlock-title{font-size:15px;font-weight:900;display:block;margin-bottom:3px;}
+.viewer-unlock-help{font-size:12px;line-height:1.6;margin:0 0 9px;color:#58716c;}
+.viewer-unlock-form{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.viewer-unlock-form label{font-size:13px;font-weight:850;white-space:nowrap;}
+.viewer-unlock-form input{
+  flex:1 1 140px;min-width:110px;min-height:43px;
+  background:#fff;border:1px solid #a0bbb4;border-radius:10px;padding:10px 12px;
+  font:600 16px/1.3 inherit;letter-spacing:.07em;color:#1e3c3b;
+}
+.viewer-unlock-submit,.viewer-unlock-next{
+  border:0;border-radius:11px;background:#247d70;color:white;
+  min-height:43px;padding:10px 17px;font-weight:850;font-size:13px;cursor:pointer;
+}
+.viewer-unlock-submit:disabled{opacity:.5;cursor:not-allowed;}
+.viewer-unlock-next{margin-top:8px;background:#bc743d;}
+.viewer-unlock-feedback{font-size:12px;margin:7px 0 0;font-weight:750;min-height:0;line-height:1.5;}
+.viewer-unlock-feedback.error{color:#b03e3e;}
+.viewer-unlock-feedback.success{color:#167a4d;}
+.viewer-unlock input:focus-visible,.viewer-unlock button:focus-visible{
+  outline:3px solid #3aaba0;outline-offset:2px;
+}
+@media(max-width:680px){
+  .viewer-unlock{padding:10px 12px 12px;max-height:41vh;}
+  .viewer-unlock-title{font-size:13px;}
+  .viewer-unlock-help{font-size:11px;line-height:1.45;margin-bottom:7px;}
+  .viewer-unlock-form{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .viewer-unlock-form label{grid-column:1/-1;font-size:12px;}
+  .viewer-unlock-form input{min-width:0;width:100%;box-sizing:border-box;}
+  .viewer-unlock-submit{min-width:0;padding:9px 7px;}
+  .viewer-unlock-next{width:100%;}
+}
