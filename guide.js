@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MAX_STAGE,PASSCODE_GATES,verifyActivityCode} from './quest-rules.js?v=0.6.0';
+import {MAX_STAGE,PASSCODE_GATES,verifyActivityCode} from './quest-rules.js?v=0.9.0';
 
 // Health Island quest prototype: all progress is local to this browser.
 // No user accounts, external gradebooks, or remote verification are implied.
