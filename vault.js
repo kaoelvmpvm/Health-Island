@@ -37,7 +37,7 @@ function placard(label){
 }
 function buildStructure(island){
   const root=new THREE.Group();
-  root.name='中央教材寶庫：不炫耀學習基地';
+  root.name='中央導覽島：Padlet 共創看板';
   root.position.set(VAULT_LOCATION.x,.61,VAULT_LOCATION.z);
   island.add(root);
   // The base and forward steps are set above the grass, never below the water.
