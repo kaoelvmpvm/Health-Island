@@ -1,0 +1,131 @@
+/* Health Island v1.1: readable two-mode UI, compact layout and reset control. */
+
+/* Keep inherited text synchronized with the daylight/night CSS variables. */
+#app{color:var(--ink)}
+#app .intro{
+  left:clamp(20px,3.3vw,60px);
+  top:clamp(118px,17vh,178px);
+  max-width:min(340px,29vw);
+  padding:16px 18px 18px;
+  border-radius:20px;
+  background:rgba(234,250,246,.23);
+  backdrop-filter:blur(5px);
+}
+#app .intro h1{font-size:clamp(36px,3.65vw,59px);line-height:1.19;margin:12px 0 11px;letter-spacing:-.05em}
+#app .intro p{font-size:12px;line-height:1.8}
+#app .feature-pills{margin-top:15px;gap:5px}
+#app .feature-pills span{padding:6px 9px}
+#app .scene-note{width:178px;right:clamp(16px,3.2vw,60px);top:43%;padding:14px;border-radius:16px;background:rgba(232,250,246,.24);backdrop-filter:blur(4px)}
+
+/* Floating labels keep a solid text surface independent of water/cloud color. */
+#app .knowledge-island-marker,#app .satellite-marker,
+#app .central-vault-marker,#app .guide-world-marker,#app .island-marker{
+  max-width:210px;
+  box-shadow:0 7px 20px rgba(8,38,51,.20);
+}
+#app .knowledge-island-marker{border-left:4px solid var(--knowledge-accent,#459e92);font-size:12px}
+#app .satellite-marker{font-size:13px;padding:8px 12px}
+#app .central-vault-marker,#app .guide-world-marker{font-size:12px}
+#app .knowledge-island-marker:focus-visible,
+#app .satellite-marker:focus-visible,
+#app .central-vault-marker:focus-visible,
+#app .guide-world-marker:focus-visible{outline:3px solid #16a7a1;outline-offset:3px}
+
+/* Explicit contrast rules; night labels should never inherit muted day ink. */
+#app.night{color:#edf9fc}
+#app.night .intro{background:rgba(6,23,41,.72);border:1px solid rgba(176,232,236,.16)}
+#app.night .intro h1,#app.night .intro h1 em{color:#f1fffa;text-shadow:0 2px 14px rgba(0,0,0,.25)}
+#app.night .intro h1 em{color:#a8f2d7}
+#app.night .intro p,#app.night .scene-note-sub{color:#d7edf3}
+#app.night .eyebrow,#app.night .scene-note-index{color:#98eee0}
+#app.night .scene-note{background:rgba(7,28,49,.73);border:1px solid rgba(176,232,236,.15)}
+#app.night .scene-note-title{color:#f2fdff}
+#app.night .build-tag{color:#ebfafc;background:rgba(10,34,55,.86);border:1px solid rgba(185,236,238,.30)}
+#app.night .tag-separator{color:#bbd6e0}
+#app.night .identity,#app.night .identity-wordmark b{color:#f0fbfd}
+#app.night .identity-wordmark small{color:#c5e3e8}
+#app.night .feature-pills span{color:#ecfdff;background:rgba(13,45,63,.82);border-color:rgba(183,232,230,.30)}
+#app.night .hint,#app.night .edition{color:#d1e8ee}
+#app.night .tool{color:#f1ffff}
+#app.night .tool.active{color:#b2ffe8}
+#app.night .toolbar{background:rgba(9,35,54,.91);border-color:rgba(200,247,243,.29)}
+#app.night .island-switcher{background:rgba(9,35,54,.91);border-color:rgba(200,247,243,.29)}
+#app.night .island-switch:not(:disabled){color:#edf8fa}
+#app.night .island-switch.active{color:#fff}
+#app.night .quest-shortcut,#app.night .lesson-trail{background:rgba(13,43,58,.93);color:#f3ffff;border-color:rgba(190,244,231,.36)}
+#app.night .central-vault-marker,#app.night .guide-world-marker,
+#app.night .knowledge-island-marker,#app.night .satellite-marker,#app.night .island-marker{
+  background:rgba(9,36,56,.96);
+  color:#f4fcff;
+  border-color:rgba(177,233,231,.53);
+  box-shadow:0 10px 25px rgba(0,9,20,.43);
+}
+#app.night .satellite-marker{border-left:5px solid var(--topic,#7bd0ba)}
+#app.night .satellite-marker.is-locked{
+  background:rgba(39,56,74,.97);
+  color:#e2eff6;
+  border:1px dashed rgba(185,222,231,.62);
+  opacity:1;
+}
+#app.night .knowledge-island-marker{border-left:4px solid var(--knowledge-accent,#8bc6ab)}
+#app.night .central-vault-marker .vault-marker-words strong,
+#app.night .guide-world-marker strong,
+#app.night .island-marker .marker-name{color:#fff}
+#app.night .central-vault-marker .vault-marker-words small,
+#app.night .guide-world-marker small,
+#app.night .island-marker .marker-tip{color:#c6e8ee}
+#app.night .central-vault-marker:hover,#app.night .guide-world-marker:hover,
+#app.night .knowledge-island-marker:hover,#app.night .satellite-marker:hover{
+  background:rgba(23,72,93,.98);
+}
+
+/* Reset is visually distinct from the purely visual camera button. */
+#app .tool-reset-progress{color:#99503b;font-weight:850}
+#app .tool-reset-progress .tool-icon{font-size:21px}
+#app .tool-reset-progress:hover,#app .tool-reset-progress:focus-visible{background:rgba(192,87,64,.13)}
+#app.night .tool-reset-progress{color:#ffd2bd}
+#app.night .tool-reset-progress:hover,#app.night .tool-reset-progress:focus-visible{background:rgba(246,163,142,.20)}
+#app .toolbar{max-width:calc(100vw - 28px);gap:0}
+#app .tool{min-height:43px}
+#app .tool:focus-visible{outline:2px solid #54bcb3;outline-offset:-2px}
+
+/* Preserve a readable exploration map instead of letting panels dominate small desktops. */
+@media(max-width:1250px){
+  #app .intro{max-width:290px;left:18px;top:128px;padding:11px 13px}
+  #app .intro h1{font-size:clamp(33px,3.4vw,49px)}
+  #app .scene-note{right:14px;width:150px}
+  #app .scene-note-sub{font-size:10px}
+}
+@media(max-width:920px){
+  #app .intro{max-width:240px}
+  #app .intro h1{font-size:34px}
+  #app .intro p{font-size:10.5px}
+  #app .scene-note{display:none}
+  #app .knowledge-island-marker,#app .satellite-marker{font-size:11px;padding:7px 10px}
+}
+@media(max-width:680px){
+  #app .intro{left:14px;top:104px;max-width:220px;padding:9px 11px;border-radius:13px}
+  #app .intro h1{font-size:28px;margin:8px 0}
+  #app .intro p{font-size:10px;line-height:1.55}
+  #app .feature-pills{display:none}
+  #app .knowledge-island-marker,#app .satellite-marker{max-width:98px;white-space:normal;line-height:1.25;font-size:10px;padding:6px 8px}
+  #app .central-vault-marker,#app .guide-world-marker{max-width:134px}
+  #app .toolbar{width:min(98vw,460px);bottom:56px;padding:4px;gap:0}
+  #app .tool{flex:1;flex-direction:column;gap:2px;min-width:0;min-height:51px;font-size:9px;padding:5px 2px}
+  #app .tool-icon{font-size:18px}
+  #app .tool-divider{height:29px;flex:0 0 1px}
+  #app .island-switcher{left:50%;transform:translateX(-50%);bottom:131px;max-width:calc(100vw - 16px)}
+  #app .hint{bottom:20px;font-size:9px}
+  #app .edition{display:none}
+}
+@media(max-width:400px){
+  #app .intro{max-width:190px}
+  #app .intro h1{font-size:25px}
+  #app .intro p{display:none}
+  #app .identity-wordmark b{font-size:10px}
+  #app .build-tag{padding:6px 8px;font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  #app .knowledge-island-marker,#app .satellite-marker,
+  #app .central-vault-marker,#app .guide-world-marker{transition:none!important}
+}
