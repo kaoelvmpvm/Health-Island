@@ -126,3 +126,10 @@
   .viewer-unlock-submit{min-width:0;padding:9px 7px;}
   .viewer-unlock-next{width:100%;}
 }
+
+/* Show the full seven-island arrangement even when a subject island is still locked. */
+.satellite-marker.is-locked{
+ background:rgba(231,239,238,.90);border:1px dashed #91aba6;
+ color:#567775;box-shadow:0 5px 15px rgba(30,55,65,.12);
+}
+.satellite-marker.is-locked:hover{background:#fff6df;color:#405d60}
