@@ -66,16 +66,17 @@ function persist(stage){
 const READING=[
  {title:'學習不必比較高低',body:'親密關係的成熟，不是用經驗多少來競爭。面對同儕的比較與起鬨，我們可以獨立思考，也應尊重自己與他人的界線。'},
  {title:'從認知、情意到技能',body:'先透過「青春補給」學會辨識觀念，再透過「青春心語 Yes」創作倡議徽章，最後在「青春練功」的情境裡練習做決定與表達立場。'},
- {title:'讓島嶼與塔樓甦醒',body:'完成行前檢核，第一座不炫耀島就會升起。完成每座塔的原始教材、找到通關密碼，再返回導覽員輸入，才能逐步解鎖下一座塔與新的主題島。'}
+ {title:'讓島嶼與塔樓甦醒',body:'完成行前檢核，第一座不炫耀島就會升起。完成每座塔的原始教材、找到通關密碼，再於教材視窗下方輸入通關密碼，即可逐步解鎖下一座塔與新的主題島。'}
 ];
 const STAGE_HINTS=[
  '歡迎來到健康島！先到中央教材寶庫閱讀《不需炫耀、不是比較》，再完成導覽員的兩題行前檢核，喚醒不炫耀島。',
- '不炫耀島已經升起。先挑戰 1-2「青春補給」，完成遊戲取得青春密碼，再回來輸入。',
+ '不炫耀島已經升起。先挑戰 1-2「青春補給」，完成遊戲取得青春密碼，直接在教材下方輸入。',
  '你已解鎖 2-2「青春心語 Yes」。完成徽章提示語的製作流程，取得通關密碼後，就能喚醒技能塔。',
  '你已解鎖 3-2「青春練功」。請嘗試不同的故事路徑，只有成功通關才會顯示最後的青春密碼。',
- '恭喜完成不炫耀島的認知、情意與技能三項挑戰！第二座「不染色島」已升起，1-1 認知塔也已開放。'
+ '不炫耀島三塔通關！不染色島與 1-1 認知塔已開放。完成 1-1 的互動遊戲後，直接在教材視窗底部輸入青春密碼。',
+ '1-1 認知塔已通關！不染色島的 2-1 情意塔已開放，可以直接進入教材。'
 ];
-const STAGE_TITLES=['行前閱讀','1-2 認知塔','2-2 情意塔','3-2 技能塔','不染色島'];
+const STAGE_TITLES=['行前閱讀','1-2 認知塔','2-2 情意塔','3-2 技能塔','1-1 認知塔','2-1 情意塔'];
 function dom(tag,attrs={},text){
  const n=document.createElement(tag);
  Object.entries(attrs).forEach(([key,value])=>{
@@ -138,6 +139,7 @@ export function createGuide({island,camera,renderer}){
    if(stage===2)announce('密碼正確！2-2 情意塔升起');
    if(stage===3)announce('密碼正確！3-2 技能塔升起');
    if(stage===4)announce('三座塔皆完成！不染色島與 1-1 認知塔升起');
+   if(stage===5)announce('密碼正確！不染色島的 2-1 情意塔升起');
  }
  function open(page='home'){
    if(overlay.hidden)priorFocus=document.activeElement;
@@ -155,7 +157,27 @@ export function createGuide({island,camera,renderer}){
    // Close the dialog before moving the camera so users can observe the 3D rise.
    close();
    if(previousStage===0||previousStage===3)navigation?.goOverview?.();
+   else if(previousStage===4)navigation?.goTo?.('不染色');
    else navigation?.goTo?.('不炫耀');
+ }
+ // Shared code verification for the inline lesson viewer and guide.
+ function getUnlockChallenge(lessonId){
+   const gate=PASSCODE_GATES[stage];
+   if(!gate||gate.lessonId!==lessonId)return null;
+   return {lessonId,codeLabel:gate.codeLabel,nextDescription:gate.nextDescription};
+ }
+ function submitLessonCode(lessonId,code){
+   const gate=PASSCODE_GATES[stage];
+   if(!gate||gate.lessonId!==lessonId){
+     return {ok:false,kind:'unavailable',message:'目前這座教材塔沒有待驗證的密碼，請確認闖關進度。'};
+   }
+   if(!verifyActivityCode(stage,code)){
+     return {ok:false,kind:'incorrect',message:'密碼不正確，請完成教材並查看通關畫面的密碼。'};
+   }
+   const previous=stage;
+   setStage(gate.nextStage);
+   return {ok:true,kind:'success',previousStage:previous,nextStage:stage,
+     nextDescription:gate.nextDescription,message:'驗證成功！已解鎖'+gate.nextDescription+'。'};
  }
  function applyCode(){
    const config=PASSCODE_GATES[stage];
@@ -178,14 +200,16 @@ export function createGuide({island,camera,renderer}){
      questRow('不炫耀島 · 1-2 認知塔',1,2,stage),
      questRow('不炫耀島 · 2-2 情意塔',2,3,stage),
      questRow('不炫耀島 · 3-2 技能塔',3,4,stage),
-     questRow('不染色島 · 1-1 認知塔',4,5,stage)
+     questRow('不染色島 · 1-1 認知塔',4,5,stage),
+     questRow('不染色島 · 2-1 情意塔',5,6,stage)
    ].join('');
    let buttons='';
    if(stage===0)buttons=action('進入教材寶庫','vault')+action('完成閱讀，開始檢核','quiz','secondary');
    if(stage===1)buttons=action('前往 1-2 認知塔','lesson12')+action('輸入 1-2 青春密碼','password','secondary');
    if(stage===2)buttons=action('前往 2-2 情意塔','lesson22')+action('輸入 2-2 通關密碼','password','secondary');
    if(stage===3)buttons=action('前往 3-2 技能塔','lesson32')+action('輸入 3-2 成功密碼','password','secondary');
-   if(stage===4)buttons=action('探索不染色島','visitClear')+action('前往 1-1 認知塔','lesson11','secondary');
+   if(stage===4)buttons=action('前往 1-1 認知塔','lesson11')+action('輸入 1-1 青春密碼','password','secondary');
+   if(stage===5)buttons=action('前往 2-1 情意塔','lesson21')+action('探索不染色島','visitClear','secondary');
    return '<div class="guide-step">目前任務 / '+STAGE_TITLES[stage]+'</div>'+
      '<p class="guide-p">'+STAGE_HINTS[stage]+'</p>'+
      '<div class="guide-quest-map">'+rows+'</div>'+
@@ -262,7 +286,7 @@ export function createGuide({island,camera,renderer}){
        if(!window.confirm('確定重設這個瀏覽器的健康島闖關紀錄，讓所有主題島重新沉入海面嗎？'))return;
        setStage(0);navigation?.goOverview?.();view='home';render();
      }else{
-       const targets={lesson12:'1-2',lesson22:'2-2',lesson32:'3-2',lesson11:'1-1'};
+       const targets={lesson12:'1-2',lesson22:'2-2',lesson32:'3-2',lesson11:'1-1',lesson21:'2-1'};
        close();
        if(a==='visitClear')navigation?.goTo?.('不染色');
        else if(targets[a])navigation?.openLesson?.(targets[a]);
@@ -309,5 +333,5 @@ export function createGuide({island,camera,renderer}){
      setTimeout(()=>{if(overlay.hidden)open()},900);
    }
  }catch{}
- return {getStage,onChange,setNavigator,update,open};
+ return {getStage,onChange,setNavigator,update,open,getUnlockChallenge,submitLessonCode};
 }
