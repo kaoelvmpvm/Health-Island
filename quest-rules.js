@@ -1,7 +1,7 @@
 // Health Island v0.6 — single source of truth for prototype unlock rules.
 // The codes are fixed values already displayed by the separate public games.
 // These are classroom activity gates, NOT secure identity/proof-of-completion.
-export const MAX_STAGE=4;
+export const MAX_STAGE=5;
 export const ISLAND_UNLOCK_STAGE=Object.freeze({
   '不炫耀':1,
   '不染色':4,
@@ -12,7 +12,7 @@ export const TOWER_UNLOCK_STAGE=Object.freeze({
   '2-2':2,
   '3-2':3,
   '1-1':4,
-  '2-1':Number.POSITIVE_INFINITY,
+  '2-1':5,
   '3-1':Number.POSITIVE_INFINITY,
   '1-3':Number.POSITIVE_INFINITY,
   '2-3':Number.POSITIVE_INFINITY,
@@ -36,6 +36,12 @@ export const PASSCODE_GATES=Object.freeze({
     nextDescription:'不染色島及其 1-1 認知塔',
     title:'3-2 技能塔 → 不染色島',
     codeLabel:'成功通關密碼'
+  }),
+  4:Object.freeze({
+    lessonId:'1-1',code:'8704',nextStage:5,
+    nextDescription:'不染色島的 2-1 情意塔',
+    title:'1-1 認知塔 → 2-1 情意塔',
+    codeLabel:'青春密碼'
   })
 });
 export function isIslandUnlocked(topic,stage){
