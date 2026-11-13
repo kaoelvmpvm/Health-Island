@@ -189,7 +189,7 @@ export function createTreasureVault({island,camera,renderer}){
       ui.mark.classList.add('hidden');
     }else{
       ui.mark.classList.remove('hidden');
-      ui.mark.style.left=x+'px';ui.mark.style.top=y+'px';
+      ui.mark.style.left=(x-(canvas.clientWidth<680?38:70))+'px';ui.mark.style.top=y+'px';
     }
   }
   return {update,open:show};
