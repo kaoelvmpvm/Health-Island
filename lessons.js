@@ -178,6 +178,47 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  const iframe=append(viewer,'iframe',{id:'lessonFrame',title:'青春系列互動教材'});
  iframe.setAttribute('allowfullscreen','');
  append(viewer,'div',{className:'viewer-hint'},'教材由原始 GitHub Pages 網站提供。若無法嵌入顯示，請點選「另開分頁」。');
+
+ const unlockBox=append(viewer,'section',{className:'viewer-unlock',hidden:true,'aria-label':'通關密碼輸入區'});
+ const unlockTitle=append(unlockBox,'strong',{className:'viewer-unlock-title'},'🔐 直接輸入通關密碼');
+ const unlockHelp=append(unlockBox,'p',{className:'viewer-unlock-help'});
+ const unlockForm=append(unlockBox,'form',{className:'viewer-unlock-form'});
+ const unlockLabel=append(unlockForm,'label',{},'青春密碼');
+ const unlockInput=append(unlockForm,'input',{id:'lessonUnlockCode',type:'text'});
+ unlockInput.setAttribute('inputmode','numeric');
+ unlockInput.setAttribute('autocomplete','off');
+ unlockInput.setAttribute('maxlength','8');
+ unlockInput.setAttribute('placeholder','遊戲結束畫面中的密碼');
+ unlockInput.required=true;unlockLabel.setAttribute('for','lessonUnlockCode');
+ const unlockSubmit=append(unlockForm,'button',{type:'submit',className:'viewer-unlock-submit'},'驗證並解鎖');
+ const unlockFeedback=append(unlockBox,'p',{className:'viewer-unlock-feedback',role:'status','aria-live':'polite'});
+ const nextTower=append(unlockBox,'button',{type:'button',className:'viewer-unlock-next',hidden:true},'前往下一座教材塔 →');
+ let currentViewerId=null,nextUnlockedId=null;
+ const followingTower={'1-2':'2-2','2-2':'3-2','3-2':'1-1','1-1':'2-1'};
+ function prepareUnlock(id){
+   currentViewerId=id;nextUnlockedId=null;
+   unlockInput.value='';unlockInput.disabled=false;unlockSubmit.disabled=false;
+   unlockFeedback.textContent='';unlockFeedback.className='viewer-unlock-feedback';nextTower.hidden=true;
+   const gate=quest?.getUnlockChallenge?.(id);
+   unlockBox.hidden=!gate;
+   if(gate){
+     unlockTitle.textContent='🔐 '+id+' 通關密碼驗證';
+     unlockLabel.textContent=gate.codeLabel;
+     unlockHelp.textContent='完成遊戲取得密碼後，直接在下方輸入即可解鎖'+gate.nextDescription+'，不必返回導覽小人。';
+   }
+ }
+ unlockForm.addEventListener('submit',e=>{
+   e.preventDefault();
+   if(!currentViewerId||unlockBox.hidden)return;
+   const result=quest?.submitLessonCode?.(currentViewerId,unlockInput.value);
+   unlockFeedback.textContent=result?.message||'目前無法驗證，請稍後重試。';
+   unlockFeedback.className='viewer-unlock-feedback '+(result?.ok?'success':'error');
+   if(!result?.ok){unlockInput.focus();return;}
+   unlockInput.disabled=true;unlockSubmit.disabled=true;
+   nextUnlockedId=followingTower[currentViewerId]||null;
+   nextTower.hidden=!nextUnlockedId;
+ });
+
  const markers=new Map();
  const idToIcon={'認知':'📖','情意':'♥','技能':'⚑'};
  for(const lesson of lessons){
@@ -269,7 +310,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    launch.addEventListener('click',()=>{
      viewerTitle.textContent=l.id+' · '+l.title+' · '+l.dimension;
      viewerExternal.href=l.url;
-     iframe.src=l.url;viewer.hidden=false;viewerClose.focus();
+     iframe.src=l.url;prepareUnlock(l.id);viewer.hidden=false;viewerClose.focus();
    });
    panel.hidden=false;scrim.hidden=false;
    markers.forEach((b,key)=>b.classList.toggle('selected',key===id));
@@ -277,6 +318,11 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  function closePanel(){panel.hidden=true;scrim.hidden=true;selected=null;markers.forEach(b=>b.classList.remove('selected'))}
  function closeDirectory(){backdrop.hidden=true;openDirectory.focus()}
  function closeViewer(){viewer.hidden=true;iframe.src='about:blank';panelContent.querySelector('.learn-button.primary')?.focus()}
+ nextTower.addEventListener('click',()=>{
+   if(!nextUnlockedId)return;
+   const next=nextUnlockedId;
+   closeViewer();closePanel();select(next);
+ });
  openDirectory.addEventListener('click',()=>{closePanel();backdrop.hidden=false;dirClose.focus()});
  overviewBtn.addEventListener('click',()=>goOverview());
  islandBtns.forEach((b,topic)=>b.addEventListener('click',()=>visit(topic)));
@@ -362,11 +408,12 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      row.status.textContent=row.lesson.format+(enabled?' · 已開放':' · 🔒 未開放');
    }
    const explanations=[
-     '先和導覽小人完成行前閱讀與兩題檢核，喚醒不炫耀島。',
+     '先閱讀教材寶庫並完成導覽小人的兩題檢核，喚醒不炫耀島。',
      '不炫耀島已升起。完成 1-2 認知塔的遊戲並輸入密碼，解鎖 2-2。',
      '2-2 情意塔已開放。完成徽章提示語活動並輸入密碼，解鎖 3-2。',
      '3-2 技能塔已開放。取得成功通關密碼，即可喚醒不染色島。',
-     '不炫耀島三塔通關！不染色島與 1-1 認知塔已開放。'
+     '不染色島與 1-1 認知塔已開放。完成 1-1 後在遊戲下方輸入青春密碼，解鎖 2-1 情意塔。',
+      '不染色島的 2-1 情意塔已開放，請繼續探索。'
    ];
    directoryDesc.textContent=explanations[Math.min(stage,4)];
    if(mode!=='overview'&&!unlockedTopic(mode))goOverview(true);
