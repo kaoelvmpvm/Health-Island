@@ -59,7 +59,7 @@ export function createKnowledgeIslands({scene,camera,renderer}){
  const entries=BOOKS.map(book=>{
    const visual=libraryStructure(scene,book);
    const mark=make('button','knowledge-island-marker','📚 '+book.topic+'知識寶庫');
-   mark.type='button';mark.setAttribute('aria-label','閱讀'+book.title+'原始教材');
+   mark.type='button';mark.id='knowledgeVaultMarker-'+book.id;mark.setAttribute('aria-label','閱讀'+book.title+'原始教材');
    mark.style.setProperty('--knowledge-accent','#'+book.color.toString(16).padStart(6,'0'));
    app.appendChild(mark);
    return {...book,...visual,mark};
