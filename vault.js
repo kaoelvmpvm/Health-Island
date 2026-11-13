@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { createVaultLibrary } from './vault-learning.js?v=0.8.0';
+import { createVaultLibrary } from './vault-learning.js?v=1.0.0';
 
-// Central Health Island: the curriculum treasure vault contains a nine-page reader,
-// Padlet sharing board, and the existing quest pathway without extra islands.
+// Central guide island: Padlet collaborative board and quest map.
+// Full PDFs are read from three independent knowledge islands.
 export const VAULT_LOCATION = Object.freeze({x:0,z:-2.75});
 
 const stone=new THREE.MeshStandardMaterial({color:0xe9e0cf,roughness:.83,flatShading:true});
@@ -79,7 +79,7 @@ function buildStructure(island){
   part(root,new THREE.BoxGeometry(.043,.19,.033),darkTeal,0,1.34,1.385);
   // Raised sign: expressly marks the central object as the curriculum vault.
   part(root,new THREE.BoxGeometry(1.5,.43,.10),darkTeal,0,2.60,1.03);
-  const frontSign=part(root,new THREE.PlaneGeometry(1.37,.365),placard('教材寶庫'),0,2.60,1.086,false);
+  const frontSign=part(root,new THREE.PlaneGeometry(1.37,.365),placard('Padlet'),0,2.60,1.086,false);
   // Treasure chest motif on the entry landing.
   const chest=new THREE.Group();chest.position.set(0,.48,2.35);root.add(chest);
   part(chest,new THREE.BoxGeometry(.79,.42,.48),darkTeal,0,.20,0);
@@ -106,11 +106,11 @@ function makeInterface(){
   const app=document.getElementById('app');
   const mark=document.createElement('button');
   mark.id='centralVaultMarker';mark.type='button';mark.className='central-vault-marker';
-  mark.setAttribute('aria-label','開啟不炫耀學習基地，閱讀九頁教材與 Padlet');
+  mark.setAttribute('aria-label','開啟導覽島 Padlet 共創看板');
   const emblem=document.createElement('span');emblem.className='vault-marker-emblem';emblem.textContent='◆';
   const words=document.createElement('span');words.className='vault-marker-words';
-  const label=document.createElement('strong');label.textContent='教材寶庫';
-  const sub=document.createElement('small');sub.textContent='中央主島 · 九頁教材與 Padlet';
+  const label=document.createElement('strong');label.textContent='導覽島 · Padlet';
+  const sub=document.createElement('small');sub.textContent='中央導覽 · 研習共創';
   words.append(label,sub);mark.append(emblem,words);
   app.appendChild(mark);
 
@@ -127,7 +127,7 @@ function makeInterface(){
   const crest=document.createElement('div');crest.className='central-vault-crest';crest.textContent='◆';
   const kicker=document.createElement('div');kicker.className='central-vault-kicker';
   kicker.textContent='HEALTH ISLAND · CENTRAL VAULT';
-  const title=document.createElement('h2');title.id='centralVaultHeading';title.textContent='教材寶庫';
+  const title=document.createElement('h2');title.id='centralVaultHeading';title.textContent='導覽島 · Padlet';
   const closeBtn=document.createElement('button');closeBtn.className='central-vault-confirm';closeBtn.type='button';closeBtn.textContent='返回健康島';
   dialog.append(dismiss,crest,kicker,title);
   createVaultLibrary(dialog,{onClose:()=>dismiss.click()});
@@ -181,7 +181,8 @@ export function createTreasureVault({island,camera,renderer}){
       each.orb.material.opacity=.5+.33*Math.sin(elapsed*2.1+each.phase);
     }
     b.aura.intensity=.95+nightBlend*.75+.16*Math.sin(elapsed*1.5);
-    project.set(VAULT_LOCATION.x,5.24,VAULT_LOCATION.z).project(camera);
+    island.updateWorldMatrix(true,false);
+    project.set(VAULT_LOCATION.x,5.24,VAULT_LOCATION.z).applyMatrix4(island.matrixWorld).project(camera);
     const x=(project.x*.5+.5)*canvas.clientWidth;
     const y=(-project.y*.5+.5)*canvas.clientHeight;
     if(project.z< -1||project.z>1||x<30||x>canvas.clientWidth-30||y<65||y>canvas.clientHeight-70){
