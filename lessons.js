@@ -352,15 +352,14 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    const hit=raycaster.intersectObjects(allowed,false)[0];
    if(hit){select(hit.object.userData.lessonId);return;}
    // Clicking on a satellite's terrain focuses that island as well.
-   const landMeshes=TOPIC_ORDER.filter(t=>unlockedTopic(t)).map(t=>islands[t].children[0]);
+   const landMeshes=TOPIC_ORDER.map(t=>islands[t].children[0]);
    const landHit=raycaster.intersectObjects(landMeshes,false)[0];
    if(landHit){
      const topic=TOPIC_ORDER.find(t=>islands[t].children[0]===landHit.object);
      if(topic)visit(topic);
    }
  });
- // A physical island is initially submerged. Only a completed reading quiz
- // can raise the first island; each password raises the next tower.
+ // Show all subject islands as a complete map. Locked islands rest lower, then rise when unlocked.
  const v=new THREE.Vector3(),forward=new THREE.Vector3();
  const risingIslands=new Set();
  const risingTowers=new Set();
@@ -375,17 +374,20 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      const wasAllowed=isIslandUnlocked(topic,previousStage);
      root.userData.bridge.visible=allowed;
      if(!allowed){
-       root.visible=false;root.position.y=-11;risingIslands.delete(topic);
+       root.visible=true;root.position.y=-1.50;risingIslands.delete(topic);
      }else if(initial){
        root.visible=true;root.position.y=0;risingIslands.delete(topic);
      }else if(wasAllowed){
        root.visible=true;
      }else{
-       root.visible=true;root.position.y=-11;risingIslands.add(topic);
+       root.visible=true;root.position.y=-1.50;risingIslands.add(topic);
      }
      const b=islandBtns.get(topic);
      b.disabled=!allowed;b.classList.toggle('is-locked',!allowed);
      b.setAttribute('aria-label',allowed?'前往'+topic+'島':topic+'島尚未解鎖');
+     const islandLabel=islandLabels.get(topic);
+     islandLabel.textContent=(allowed?'':'🔒 ')+TOPICS[topic].icon+' '+topic+'島';
+     islandLabel.classList.toggle('is-locked',!allowed);
    }
    for(const entry of animated){
      const id=entry.lesson.id;
@@ -408,14 +410,14 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      row.status.textContent=row.lesson.format+(enabled?' · 已開放':' · 🔒 未開放');
    }
    const explanations=[
-     '先閱讀教材寶庫並完成導覽小人的兩題檢核，喚醒不炫耀島。',
+     '先前往不炫耀知識寶庫閱讀完整 PDF，再完成導覽小人的兩題行前檢核，喚醒不炫耀主題島。',
      '不炫耀島已升起。完成 1-2 認知塔的遊戲並輸入密碼，解鎖 2-2。',
      '2-2 情意塔已開放。完成徽章提示語活動並輸入密碼，解鎖 3-2。',
      '3-2 技能塔已開放。取得成功通關密碼，即可喚醒不染色島。',
      '不染色島與 1-1 認知塔已開放。完成 1-1 後在遊戲下方輸入青春密碼，解鎖 2-1 情意塔。',
       '不染色島的 2-1 情意塔已開放，請繼續探索。'
    ];
-   directoryDesc.textContent=explanations[Math.min(stage,4)];
+   directoryDesc.textContent=explanations[Math.min(stage,explanations.length-1)];
    if(mode!=='overview'&&!unlockedTopic(mode))goOverview(true);
  }
  function update(dt,elapsed){
@@ -444,7 +446,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    }
    camera.getWorldDirection(forward);
    for(const [topic,node] of islandLabels){
-     if(mode!=='overview'||!unlockedTopic(topic)){node.classList.add('hidden');continue;}
+     if(mode!=='overview'){node.classList.add('hidden');continue;}
      const origin=TOPIC_ISLANDS[topic];
      v.set(origin.x,4.1,origin.z).project(camera);
      const x=(v.x*.5+.5)*canvas.clientWidth;
