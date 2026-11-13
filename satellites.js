@@ -143,7 +143,8 @@ function bridge(scene,info){
   const from=new THREE.Vector2(0,0);
   const to=new THREE.Vector2(info.x,info.z);
   const unit=to.clone().normalize(),length=to.length();
-  const start=8.8,end=length-4.6;
+  // Bridge now begins at the edge of the smaller central Padlet guide island.
+  const start=5.4,end=length-4.6;
   const bridgeMat=mat(0xf5ece3);
   const brightMat=new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.65,depthWrite:false});
   for(let d=start+.15;d<end;d+=.64){
