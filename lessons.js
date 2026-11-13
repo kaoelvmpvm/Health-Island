@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {isIslandUnlocked,isTowerUnlocked} from './quest-rules.js?v=0.6.0';
+import {isIslandUnlocked,isTowerUnlocked} from './quest-rules.js?v=0.9.0';
 import { TOPIC_ISLANDS, LOCAL_STATIONS, buildSatelliteIslands } from './satellites.js?v=0.5.0';
 
 // Each station lives on its own floating island; coordinates are world-space.
