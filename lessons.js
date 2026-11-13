@@ -194,7 +194,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  const unlockFeedback=append(unlockBox,'p',{className:'viewer-unlock-feedback',role:'status','aria-live':'polite'});
  const nextTower=append(unlockBox,'button',{type:'button',className:'viewer-unlock-next',hidden:true},'前往下一座教材塔 →');
  let currentViewerId=null,nextUnlockedId=null;
- const followingTower={'1-2':'2-2','2-2':'3-2','3-2':'1-1','1-1':'2-1'};
+ const followingTower={'1-2':'2-2','2-2':'3-2','1-1':'2-1'};
  function prepareUnlock(id){
    currentViewerId=id;nextUnlockedId=null;
    unlockInput.value='';unlockInput.disabled=false;unlockSubmit.disabled=false;
@@ -204,7 +204,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    if(gate){
      unlockTitle.textContent='🔐 '+id+' 通關密碼驗證';
      unlockLabel.textContent=gate.codeLabel;
-     unlockHelp.textContent='完成遊戲取得密碼後，直接在下方輸入即可解鎖'+gate.nextDescription+'，不必返回導覽小人。';
+     unlockHelp.textContent='完成遊戲取得密碼後，直接在下方輸入即可解鎖'+gate.nextDescription+'，不必返回導覽小人。'+
+        (id==='3-2'?'驗證成功後，會自動回到地圖並聚焦不染色島。':'');
    }
  }
  unlockForm.addEventListener('submit',e=>{
@@ -214,6 +215,10 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    unlockFeedback.textContent=result?.message||'目前無法驗證，請稍後重試。';
    unlockFeedback.className='viewer-unlock-feedback '+(result?.ok?'success':'error');
    if(!result?.ok){unlockInput.focus();return;}
+    if(currentViewerId==='3-2'){
+      showIslandUnlock('不染色');
+      return;
+    }
    unlockInput.disabled=true;unlockSubmit.disabled=true;
    nextUnlockedId=followingTower[currentViewerId]||null;
    nextTower.hidden=!nextUnlockedId;
@@ -261,7 +266,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    const b=document.getElementById('spinBtn');
    b.classList.remove('active');b.setAttribute('aria-pressed','false');
  }
- function moveTo(topic,instant=false){
+ function moveTo(topic,instant=false,reveal=false){
    if(topic&&!unlockedTopic(topic)){quest?.open?.();return}
    mode=topic;
    stopSpin();
@@ -270,7 +275,8 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    const destination=topic?target.clone().add(focusedOffset()):overviewPosition();
    flight={
      fromPos:camera.position.clone(),fromTarget:controls.target.clone(),
-     toPos:destination,toTarget:target,t:0,duration:instant?0:.95
+     toPos:destination,toTarget:target,t:0,duration:reveal?1.45:.95,
+      revealTopic:reveal?topic:null
    };
    if(instant){camera.position.copy(destination);controls.target.copy(target);controls.update();flight=null}
    overviewBtn.classList.toggle('active',!topic);overviewBtn.setAttribute('aria-pressed',String(!topic));
@@ -317,7 +323,22 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  }
  function closePanel(){panel.hidden=true;scrim.hidden=true;selected=null;markers.forEach(b=>b.classList.remove('selected'))}
  function closeDirectory(){backdrop.hidden=true;openDirectory.focus()}
- function closeViewer(){viewer.hidden=true;iframe.src='about:blank';panelContent.querySelector('.learn-button.primary')?.focus()}
+ function closeViewer({restoreFocus=true}={}){
+   viewer.hidden=true;
+   iframe.src='about:blank';
+   currentViewerId=null;
+   nextUnlockedId=null;
+   if(restoreFocus)panelContent.querySelector('.learn-button.primary')?.focus();
+ }
+ function showIslandUnlock(topic){
+   if(!unlockedTopic(topic))return;
+   if(!viewer.hidden)closeViewer({restoreFocus:false});
+   closePanel();
+   backdrop.hidden=true;
+   const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+   moveTo(topic,reduceMotion,true);
+   islandBtns.get(topic)?.focus({preventScroll:true});
+ }
  nextTower.addEventListener('click',()=>{
    if(!nextUnlockedId)return;
    const next=nextUnlockedId;
@@ -330,7 +351,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
  panelClose.addEventListener('click',closePanel);scrim.addEventListener('click',closePanel);
  dirClose.addEventListener('click',closeDirectory);
  backdrop.addEventListener('click',e=>{if(e.target===backdrop)closeDirectory()});
- viewerClose.addEventListener('click',closeViewer);
+ viewerClose.addEventListener('click',()=>closeViewer());
  document.addEventListener('keydown',e=>{
    if(e.key!=='Escape')return;
    if(!viewer.hidden)closeViewer();
@@ -421,7 +442,10 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    if(mode!=='overview'&&!unlockedTopic(mode))goOverview(true);
  }
  function update(dt,elapsed){
+    // Let the camera bring the new island into view before it starts to rise.
+    const pendingReveal=flight?.t<.24?flight.revealTopic:null;
    for(const topic of [...risingIslands]){
+     if(topic===pendingReveal)continue;
      const root=islands[topic];
      root.position.y=THREE.MathUtils.damp(root.position.y,0,1.45,dt);
      if(Math.abs(root.position.y)<.025){
@@ -431,6 +455,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    for(const id of [...risingTowers]){
      const tower=animated.find(item=>item.lesson.id===id);
      if(!tower){risingTowers.delete(id);continue}
+     if(tower.lesson.topic===pendingReveal)continue;
      tower.root.position.y=THREE.MathUtils.damp(tower.root.position.y,groundY,2,dt);
      if(Math.abs(tower.root.position.y-groundY)<.025){
        tower.root.position.y=groundY;risingTowers.delete(id);
@@ -465,7 +490,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
      a.halo.material.opacity=(selected?.id===a.lesson.id) ? .95 : .52+.17*Math.sin(elapsed*1.5);
      const b=markers.get(a.lesson.id);
      if(mode!==a.lesson.topic||!unlockedLesson(a.lesson.id)){b.classList.add('hidden');continue;}
-     v.set(a.spot.x,3.05,a.spot.z);
+     v.set(a.spot.x,3.05+islands[a.lesson.topic].position.y+a.root.position.y-groundY,a.spot.z);
      if(v.clone().sub(camera.position).dot(forward)<0){b.classList.add('hidden');continue}
      v.project(camera);
      const x=(v.x*.5+.5)*canvas.clientWidth;
@@ -475,7 +500,7 @@ export async function setupLearningIsland({scene,camera,renderer,controls,quest}
    }
  }
  if(quest){
-   quest.setNavigator({goTo:visit,goOverview,openLesson:select});
+   quest.setNavigator({goTo:visit,goOverview,openLesson:select,showIslandUnlock});
    quest.onChange(syncQuest);
  }else{
    syncQuest(0,0);

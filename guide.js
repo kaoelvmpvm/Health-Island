@@ -156,7 +156,8 @@ export function createGuide({island,camera,renderer}){
  function nextAfterSuccess(previousStage){
    // Close the dialog before moving the camera so users can observe the 3D rise.
    close();
-   if(previousStage===0||previousStage===3)navigation?.goOverview?.();
+   if(previousStage===0)navigation?.goOverview?.();
+   else if(previousStage===3)navigation?.showIslandUnlock?.('不染色');
    else if(previousStage===4)navigation?.goTo?.('不染色');
    else navigation?.goTo?.('不炫耀');
  }
